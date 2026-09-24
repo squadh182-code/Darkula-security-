@@ -9,70 +9,128 @@ const roleWhitelist =
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist-role")
-    .setDescription("Manage role whitelist")
+    .setDescription(
+      "Manage role whitelist"
+    )
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     )
-    .addSubcommand((sub) =>
+
+    .addSubcommand(sub =>
       sub
         .setName("add")
-        .setDescription("Add a role")
-        .addRoleOption((option) =>
+        .setDescription(
+          "Add a role to whitelist"
+        )
+        .addRoleOption(option =>
           option
             .setName("role")
             .setDescription("Role")
             .setRequired(true)
         )
-        .addStringOption((option) =>
+        .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Protection type")
+            .setDescription(
+              "Protection type"
+            )
             .setRequired(true)
             .addChoices(
-              { name: "All", value: "All" },
-              { name: "Channel Delete", value: "Channel Delete" },
-              { name: "Channel Create", value: "Channel Create" },
-              { name: "Role Delete", value: "Role Delete" },
-              { name: "Role Create", value: "Role Create" },
-              { name: "Role Update", value: "Role Update" },
-              { name: "Bot Add", value: "Bot Add" },
-              { name: "Invite", value: "Invite" },
-              { name: "Spam", value: "Spam" },
-              { name: "Mention", value: "Mention" },
-              { name: "Emoji", value: "Emoji" },
-              { name: "Long Message", value: "Long Message" }
+              {
+                name: "All",
+                value: "All"
+              },
+              {
+                name: "Channel Delete",
+                value: "Channel Delete"
+              },
+              {
+                name: "Channel Create",
+                value: "Channel Create"
+              },
+              {
+                name: "Role Delete",
+                value: "Role Delete"
+              },
+              {
+                name: "Role Create",
+                value: "Role Create"
+              },
+              {
+                name: "Role Update",
+                value: "Role Update"
+              },
+              {
+                name: "Bot Add",
+                value: "Bot Add"
+              },
+              {
+                name: "Invite",
+                value: "Invite"
+              },
+              {
+                name: "Spam",
+                value: "Spam"
+              },
+              {
+                name: "Mention",
+                value: "Mention"
+              },
+              {
+                name: "Emoji",
+                value: "Emoji"
+              },
+              {
+                name: "Long Message",
+                value: "Long Message"
+              }
             )
         )
     )
-    .addSubcommand((sub) =>
+
+    .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription("Remove a role")
-        .addRoleOption((option) =>
+        .setDescription(
+          "Remove a role from whitelist"
+        )
+        .addRoleOption(option =>
           option
             .setName("role")
             .setDescription("Role")
             .setRequired(true)
         )
     )
-    .addSubcommand((sub) =>
+
+    .addSubcommand(sub =>
       sub
         .setName("list")
-        .setDescription("Show role whitelist")
+        .setDescription(
+          "Show role whitelist"
+        )
     ),
 
   async execute(interaction) {
     const subcommand =
       interaction.options.getSubcommand();
 
-    if (subcommand === "add") {
+    if (
+      subcommand === "add"
+    ) {
       const role =
-        interaction.options.getRole("role");
+        interaction.options.getRole(
+          "role"
+        );
 
       const type =
-        interaction.options.getString("type");
+        interaction.options.getString(
+          "type"
+        );
 
-      roleWhitelist.add(role.id, type);
+      roleWhitelist.add(
+        role.id,
+        type
+      );
 
       return interaction.reply({
         content:
@@ -82,11 +140,17 @@ module.exports = {
       });
     }
 
-    if (subcommand === "remove") {
+    if (
+      subcommand === "remove"
+    ) {
       const role =
-        interaction.options.getRole("role");
+        interaction.options.getRole(
+          "role"
+        );
 
-      roleWhitelist.remove(role.id);
+      roleWhitelist.remove(
+        role.id
+      );
 
       return interaction.reply({
         content:
@@ -95,21 +159,24 @@ module.exports = {
       });
     }
 
-    const list = roleWhitelist.list();
+    const list =
+      roleWhitelist.list();
 
     if (!list.length) {
       return interaction.reply({
-        content: "📋 Role whitelist is empty.",
+        content:
+          "📋 Role whitelist is empty.",
         ephemeral: true
       });
     }
 
-    const text = list
-      .map(
-        ([id, type]) =>
-          `<@&${id}> — **${type}**`
-      )
-      .join("\n");
+    const text =
+      list
+        .map(
+          ([id, type]) =>
+            `<@&${id}> — **${type}**`
+        )
+        .join("\n");
 
     return interaction.reply({
       content:
