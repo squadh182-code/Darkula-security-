@@ -8,17 +8,18 @@ module.exports = async (member) => {
   if (!member.guild) return;
 
   try {
+    if (member.user.bot) {
+      await antiBot.handleBotAdd(member);
+      return;
+    }
+
     const raidDetected =
-      antiRaid.handleMemberJoin(member);
+      await antiRaid.handleMemberJoin(member);
 
     if (raidDetected) {
       console.log(
         `🚨 Possible raid detected in ${member.guild.name}`
       );
-    }
-
-    if (member.user.bot) {
-      await antiBot.handleBotAdd(member);
     }
   } catch (error) {
     console.error(
