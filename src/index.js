@@ -31,10 +31,8 @@ const client = new Client({
   ]
 });
 
-// Ready event
 require("./events/ready")(client);
 
-// Security events
 client.on(
   "guildMemberAdd",
   require("./events/guildMemberAdd")
@@ -55,8 +53,9 @@ client.on(
   require("./events/guildAuditLogEntryCreate")
 );
 
-// Register slash commands
 client.once("ready", async () => {
+  console.log("🔄 Registering slash commands...");
+
   const rest = new REST({
     version: "10"
   }).setToken(process.env.DISCORD_TOKEN);
@@ -76,7 +75,9 @@ client.once("ready", async () => {
       }
     );
 
-    console.log("✅ Slash commands registered.");
+    console.log(
+      `✅ ${commandData.length} slash commands registered.`
+    );
   } catch (error) {
     console.error(
       "❌ Slash command registration failed:",
@@ -85,7 +86,6 @@ client.once("ready", async () => {
   }
 });
 
-// Environment checks
 if (!process.env.DISCORD_TOKEN) {
   console.error("❌ DISCORD_TOKEN is missing.");
   process.exit(1);
@@ -96,5 +96,4 @@ if (!process.env.CLIENT_ID) {
   process.exit(1);
 }
 
-// Login
 client.login(process.env.DISCORD_TOKEN);
