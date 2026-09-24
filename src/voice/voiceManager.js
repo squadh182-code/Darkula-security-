@@ -5,7 +5,7 @@ const {
 
 function joinChannel(channel) {
   if (!channel || !channel.isVoiceBased()) {
-    return null;
+    throw new Error("Invalid voice channel.");
   }
 
   const connection = joinVoiceChannel({
@@ -20,15 +20,13 @@ function joinChannel(channel) {
 }
 
 function leaveChannel(guildId) {
-  const connection =
-    getVoiceConnection(guildId);
+  const connection = getVoiceConnection(guildId);
 
   if (!connection) {
     return false;
   }
 
   connection.destroy();
-
   return true;
 }
 
