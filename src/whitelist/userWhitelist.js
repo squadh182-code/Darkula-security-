@@ -1,56 +1,147 @@
-const database = require("../database/database");
+const database =
+  require("../database/database");
 
 const data = database.load();
 
-const users = new Map(
-  data.users.map(item => [
-    item.id,
+const users = new Map();
+
+for (const item of data.users) {
+  if (
+    item &&
+    item.id &&
     item.type
-  ])
-);
+  ) {
+    if (!users.has(item.id)) {
+      users.set(item.id, new Set());
+    }
+
+    users.get(item.id).add(item.type);
+  }
+}
 
 function save() {
-  const current = database.load();
+  const current =
+    database.load();
 
-  current.users = [...users.entries()]
-    .map(([id, type]) => ({
-      id,
-      type
-    }));
+  current.users = [];
+
+  for (const [id, types] of users.entries()) {
+    for (const type of types) {
+      current.users.push({
+        id,
+        type
+      });
+    }
+  }
 
   database.save(current);
 }
 
-function add(userId, type = "All") {
-  users.set(userId, type);
+function add(
+  userId,
+  type = "All"
+) {
+  if (!users.has(userId)) {
+    users.set(
+      userId,
+      new Set()
+    );
+  }
+
+  const types =
+    users.get(userId);
+
+  // All replaces specific types
+  if (type === "All") {
+    types.clear();
+    types.add("All");
+  } else {
+    // If All exists, specific type is unnecessary
+    if (types.has("All")) {
+      return;
+    }
+
+    types.add(type);
+  }
+
   save();
 }
 
-function remove(userId) {
-  users.delete(userId);
-  save();
-}
-
-function has(userId, type = "All") {
+function remove(
+  userId,
+  type = "All"
+) {
   if (!users.has(userId)) {
     return false;
   }
 
-  const whitelistType = users.get(userId);
+  const types =
+    users.get(userId);
+
+  if (type === "All") {
+    users.delete(userId);
+    save();
+    return true;
+  }
+
+  const removed =
+    types.delete(type);
+
+  if (types.size === 0) {
+    users.delete(userId);
+  }
+
+  if (removed) {
+    save();
+  }
+
+  return removed;
+}
+
+function has(
+  userId,
+  type = "All"
+) {
+  if (!users.has(userId)) {
+    return false;
+  }
+
+  const types =
+    users.get(userId);
 
   return (
-    whitelistType === "All" ||
-    whitelistType === type
+    types.has("All") ||
+    types.has(type)
   );
 }
 
 function list() {
-  return [...users.entries()];
+  const result = [];
+
+  for (const [id, types] of users.entries()) {
+    result.push({
+      id,
+      types: [...types]
+    });
+  }
+
+  return result;
+}
+
+function getTypes(userId) {
+  if (!users.has(userId)) {
+    return [];
+  }
+
+  return [
+    ...users.get(userId)
+  ];
 }
 
 module.exports = {
   add,
   remove,
   has,
-  list
+  list,
+  getTypes
 };
