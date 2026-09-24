@@ -1,187 +1,145 @@
 const {
-  SlashCommandBuilder,
-  PermissionFlagsBits
+  SlashCommandBuilder
 } = require("discord.js");
 
 const roleWhitelist =
   require("../whitelist/roleWhitelist");
 
+const TYPES = [
+  "All",
+  "Channel Delete",
+  "Channel Create",
+  "Role Delete",
+  "Role Create",
+  "Role Update",
+  "Bot Add",
+  "Invite",
+  "Spam",
+  "Mention",
+  "Emoji",
+  "Long Message"
+];
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist-role")
-    .setDescription(
-      "Manage role whitelist"
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator
-    )
-
+    .setDescription("Manage role whitelist")
     .addSubcommand(sub =>
       sub
         .setName("add")
-        .setDescription(
-          "Add a role to whitelist"
-        )
+        .setDescription("Add a role to the whitelist")
         .addRoleOption(option =>
           option
             .setName("role")
-            .setDescription("Role")
+            .setDescription("Role to whitelist")
             .setRequired(true)
         )
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription(
-              "Protection type"
-            )
+            .setDescription("Protection type")
             .setRequired(true)
             .addChoices(
-              {
-                name: "All",
-                value: "All"
-              },
-              {
-                name: "Channel Delete",
-                value: "Channel Delete"
-              },
-              {
-                name: "Channel Create",
-                value: "Channel Create"
-              },
-              {
-                name: "Role Delete",
-                value: "Role Delete"
-              },
-              {
-                name: "Role Create",
-                value: "Role Create"
-              },
-              {
-                name: "Role Update",
-                value: "Role Update"
-              },
-              {
-                name: "Bot Add",
-                value: "Bot Add"
-              },
-              {
-                name: "Invite",
-                value: "Invite"
-              },
-              {
-                name: "Spam",
-                value: "Spam"
-              },
-              {
-                name: "Mention",
-                value: "Mention"
-              },
-              {
-                name: "Emoji",
-                value: "Emoji"
-              },
-              {
-                name: "Long Message",
-                value: "Long Message"
-              }
+              ...TYPES.map(type => ({
+                name: type,
+                value: type
+              }))
             )
         )
     )
-
     .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription(
-          "Remove a role from whitelist"
-        )
+        .setDescription("Remove a role from the whitelist")
         .addRoleOption(option =>
           option
             .setName("role")
-            .setDescription("Role")
+            .setDescription("Role to remove")
             .setRequired(true)
         )
+        .addStringOption(option =>
+          option
+            .setName("type")
+            .setDescription("Whitelist type to remove")
+            .setRequired(true)
+            .addChoices(
+              ...TYPES.map(type => ({
+                name: type,
+                value: type
+              }))
+            )
+        )
     )
-
     .addSubcommand(sub =>
       sub
         .setName("list")
-        .setDescription(
-          "Show role whitelist"
-        )
+        .setDescription("List whitelisted roles")
     ),
 
   async execute(interaction) {
     const subcommand =
       interaction.options.getSubcommand();
 
-    if (
-      subcommand === "add"
-    ) {
+    if (subcommand === "add") {
       const role =
-        interaction.options.getRole(
-          "role"
-        );
+        interaction.options.getRole("role");
 
       const type =
-        interaction.options.getString(
-          "type"
-        );
+        interaction.options.getString("type");
 
       roleWhitelist.add(
         role.id,
         type
       );
 
-      return interaction.reply({
-        content:
-          `✅ ${role} added to role whitelist.\n` +
-          `Protection: **${type}**`,
-        ephemeral: true
-      });
+      return interaction.reply(
+        `✅ ${role} has been whitelisted for **${type}**.`
+      );
     }
 
-    if (
-      subcommand === "remove"
-    ) {
+    if (subcommand === "remove") {
       const role =
-        interaction.options.getRole(
-          "role"
+        interaction.options.getRole("role");
+
+      const type =
+        interaction.options.getString("type");
+
+      const removed =
+        roleWhitelist.remove(
+          role.id,
+          type
         );
 
-      roleWhitelist.remove(
-        role.id
+      if (!removed) {
+        return interaction.reply(
+          `❌ ${role} does not have the **${type}** whitelist.`
+        );
+      }
+
+      return interaction.reply(
+        `✅ Removed **${type}** whitelist from ${role}.`
       );
-
-      return interaction.reply({
-        content:
-          `✅ ${role} removed from role whitelist.`,
-        ephemeral: true
-      });
     }
 
-    const list =
-      roleWhitelist.list();
+    if (subcommand === "list") {
+      const list =
+        roleWhitelist.list();
 
-    if (!list.length) {
-      return interaction.reply({
-        content:
-          "📋 Role whitelist is empty.",
-        ephemeral: true
-      });
-    }
+      if (!list.length) {
+        return interaction.reply(
+          "📋 No roles are currently whitelisted."
+        );
+      }
 
-    const text =
-      list
-        .map(
-          ([id, type]) =>
-            `<@&${id}> — **${type}**`
+      const text = list
+        .map(item =>
+          `<@&${item.id}> — ${item.types.join(", ")}`
         )
         .join("\n");
 
-    return interaction.reply({
-      content:
-        `📋 **Role Whitelist**\n\n${text}`,
-      ephemeral: true
-    });
+      return interaction.reply(
+        `📋 **Whitelisted Roles**\n\n${text}`
+      );
+    }
   }
 };
