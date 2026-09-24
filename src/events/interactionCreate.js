@@ -9,6 +9,17 @@ const whitelistRole =
 const whitelistChannel =
   require("../commands/whitelistChannel");
 
+const join =
+  require("../commands/join");
+
+const leave =
+  require("../commands/leave");
+
+
+/*
+ * Register Commands
+ */
+
 commands.set(
   whitelist.data.name,
   whitelist
@@ -24,38 +35,73 @@ commands.set(
   whitelistChannel
 );
 
+commands.set(
+  join.data.name,
+  join
+);
+
+commands.set(
+  leave.data.name,
+  leave
+);
+
+
+/*
+ * Interaction Handler
+ */
+
 module.exports = async (interaction) => {
+
   if (!interaction.isChatInputCommand()) {
     return;
   }
 
   const command =
-    commands.get(interaction.commandName);
+    commands.get(
+      interaction.commandName
+    );
 
-  if (!command) return;
+  if (!command) {
+    return;
+  }
 
   try {
-    await command.execute(interaction);
+
+    await command.execute(
+      interaction
+    );
+
   } catch (error) {
+
     console.error(
       "❌ Command error:",
       error
     );
 
     if (interaction.replied) {
+
       await interaction.followUp({
         content:
           "❌ Something went wrong.",
         ephemeral: true
       }).catch(() => {});
+
     } else {
+
       await interaction.reply({
         content:
           "❌ Something went wrong.",
         ephemeral: true
       }).catch(() => {});
+
     }
   }
 };
 
-module.exports.commands = commands;
+
+/*
+ * Export Commands
+ */
+
+module.exports.commands =
+  commands;
