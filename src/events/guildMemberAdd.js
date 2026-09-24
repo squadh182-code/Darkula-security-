@@ -1,25 +1,29 @@
+const antiRaid =
+  require("../security/antiRaid");
+
+const antiBot =
+  require("../security/antiBot");
+
 module.exports = async (member) => {
-  if (!member.user.bot) return;
-
-  console.log(`🤖 Bot joined: ${member.user.tag}`);
-
-  const botRoleId = "1401958482264985621";
-  const role = member.guild.roles.cache.get(botRoleId);
-
-  if (!role) {
-    console.log("❌ Bot role not found.");
-    return;
-  }
-
-  if (!role.editable) {
-    console.log("❌ I cannot assign the bot role. Check role hierarchy.");
-    return;
-  }
+  if (!member.guild) return;
 
   try {
-    await member.roles.add(role);
-    console.log(`✅ Bot role assigned to ${member.user.tag}`);
+    const raidDetected =
+      antiRaid.handleMemberJoin(member);
+
+    if (raidDetected) {
+      console.log(
+        `🚨 Possible raid detected in ${member.guild.name}`
+      );
+    }
+
+    if (member.user.bot) {
+      await antiBot.handleBotAdd(member);
+    }
   } catch (error) {
-    console.error("❌ Failed to assign bot role:", error);
+    console.error(
+      "❌ Member protection error:",
+      error
+    );
   }
 };
