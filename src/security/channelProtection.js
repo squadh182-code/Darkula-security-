@@ -1,17 +1,168 @@
-const securityLog = require("../utils/securityLog");
+const securityLog =
+  require("../utils/securityLog");
+
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
+function isWhitelisted(
+  executor,
+  type,
+  member
+) {
+  if (
+    userWhitelist.has(
+      executor.id,
+      type
+    )
+  ) {
+    return true;
+  }
+
+  const roleIds =
+    member?.roles?.cache
+      ? [...member.roles.cache.keys()]
+      : [];
+
+  return roleWhitelist.has(
+    roleIds,
+    type
+  );
+}
+
+async function clearUserRoles(
+  member,
+  reason
+) {
+  if (!member) return false;
+
+  if (!member.manageable) {
+    console.log(
+      `❌ Cannot clear roles from ${
+        member.user?.tag || member.id
+      }`
+    );
+
+    return false;
+  }
+
+  const removableRoles =
+    member.roles.cache.filter(
+      role =>
+        role.id !== member.guild.id &&
+        !role.managed &&
+        role.editable
+    );
+
+  if (!removableRoles.size) {
+    return false;
+  }
+
+  try {
+    await member.roles.remove(
+      removableRoles,
+      reason
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "❌ Failed to clear roles:",
+      error
+    );
+
+    return false;
+  }
+}
 
 async function handleChannelAction({
   guild,
   action,
   channel,
-  executor
+  executor,
+  responsibleMember
 }) {
-  if (!guild) return;
+  if (!guild || !executor) return;
 
-  console.log(
-    `🛡️ Channel Protection: ${action}`
-  );
+  // Never punish the security bot itself
+  if (
+    executor.id === guild.client.user.id
+  ) {
+    return;
+  }
 
+  const whitelistType =
+    action === "Delete"
+      ? "Channel Delete"
+      : "Channel Create";
+
+  // WHITELIST CHECK
+  if (
+    isWhitelisted(
+      executor,
+      whitelistType,
+      responsibleMember
+    )
+  ) {
+    await securityLog(guild, {
+      title:
+        "Whitelisted Channel Action",
+      color: 0x57F287,
+      fields: [
+        {
+          name: "Action",
+          value: action
+        },
+        {
+          name: "User",
+          value: `${executor}`
+        },
+        {
+          name: "Channel",
+          value: channel
+            ? `${channel.name || channel.id}`
+            : "Unknown"
+        }
+      ]
+    });
+
+    return;
+  }
+
+  // UNAUTHORIZED ACTION
+  let rolesCleared = false;
+
+  if (responsibleMember) {
+    rolesCleared =
+      await clearUserRoles(
+        responsibleMember,
+        `Security Protection — Channel ${action}`
+      );
+  }
+
+  // ROLES CLEARED LOG
+  if (rolesCleared) {
+    await securityLog(guild, {
+      title: "Roles Cleared",
+      color: 0xFF0000,
+      fields: [
+        {
+          name: "User",
+          value:
+            `${responsibleMember.user} (${responsibleMember.id})`
+        },
+        {
+          name: "Reason",
+          value:
+            `Unauthorized Channel ${action}`
+        }
+      ]
+    });
+  }
+
+  // CHANNEL SECURITY LOG
   await securityLog(guild, {
     title: `Channel ${action}`,
     color: 0xFF0000,
@@ -23,15 +174,20 @@ async function handleChannelAction({
           : "Unknown"
       },
       {
-        name: "User",
-        value: executor
-          ? `${executor}`
-          : "Unknown"
+        name: "Action By",
+        value: `${executor}`
+      },
+      {
+        name: "Protection",
+        value: rolesCleared
+          ? "Roles Cleared"
+          : "Could not clear roles"
       }
     ]
   });
 }
 
 module.exports = {
-  handleChannelAction
+  handleChannelAction,
+  clearUserRoles
 };
