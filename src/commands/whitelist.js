@@ -3,6 +3,9 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist")
@@ -10,14 +13,14 @@ module.exports = {
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("add")
         .setDescription("Add a user to whitelist")
         .addUserOption((option) =>
           option
             .setName("user")
-            .setDescription("User to whitelist")
+            .setDescription("User")
             .setRequired(true)
         )
         .addStringOption((option) =>
@@ -41,26 +44,76 @@ module.exports = {
             )
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("remove")
-        .setDescription("Remove a user from whitelist")
+        .setDescription("Remove a user")
         .addUserOption((option) =>
           option
             .setName("user")
-            .setDescription("User to remove")
+            .setDescription("User")
             .setRequired(true)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("list")
-        .setDescription("Show whitelisted users")
+        .setDescription("Show user whitelist")
     ),
 
   async execute(interaction) {
-    await interaction.reply({
-      content: "🛡️ Whitelist system is being connected.",
+    const subcommand =
+      interaction.options.getSubcommand();
+
+    if (subcommand === "add") {
+      const user =
+        interaction.options.getUser("user");
+
+      const type =
+        interaction.options.getString("type");
+
+      userWhitelist.add(user.id, type);
+
+      return interaction.reply({
+        content:
+          `✅ ${user} added to user whitelist.\n` +
+          `Protection: **${type}**`,
+        ephemeral: true
+      });
+    }
+
+    if (subcommand === "remove") {
+      const user =
+        interaction.options.getUser("user");
+
+      userWhitelist.remove(user.id);
+
+      return interaction.reply({
+        content:
+          `✅ ${user} removed from user whitelist.`,
+        ephemeral: true
+      });
+    }
+
+    const list = userWhitelist.list();
+
+    if (!list.length) {
+      return interaction.reply({
+        content: "📋 User whitelist is empty.",
+        ephemeral: true
+      });
+    }
+
+    const text = list
+      .map(
+        ([id, type]) =>
+          `<@${id}> — **${type}**`
+      )
+      .join("\n");
+
+    return interaction.reply({
+      content:
+        `📋 **User Whitelist**\n\n${text}`,
       ephemeral: true
     });
   }
