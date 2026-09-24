@@ -1,8 +1,31 @@
 const config = require("../config/config");
 const { timeoutMember } = require("../utils/timeout");
 const securityLog = require("../utils/securityLog");
+const channelWhitelist = require("../whitelist/channelWhitelist");
+const userWhitelist = require("../whitelist/userWhitelist");
+const roleWhitelist = require("../whitelist/roleWhitelist");
 
 const messageHistory = new Map();
+
+function isWhitelisted(message, type) {
+  if (
+    channelWhitelist.has(message.channel.id, type)
+  ) {
+    return true;
+  }
+
+  if (
+    userWhitelist.has(message.author.id, type)
+  ) {
+    return true;
+  }
+
+  const roleIds = message.member?.roles?.cache
+    ? [...message.member.roles.cache.keys()]
+    : [];
+
+  return roleWhitelist.has(roleIds, type);
+}
 
 function normalize(text) {
   return text
@@ -19,12 +42,10 @@ function similarity(a, b) {
   const longer = a.length >= b.length ? a : b;
   const shorter = a.length >= b.length ? b : a;
 
-  if (!longer.length) return 1;
-
   let same = 0;
 
-  for (let i = 0; i < shorter.length; i++) {
-    if (longer.includes(shorter[i])) {
+  for (const char of shorter) {
+    if (longer.includes(char)) {
       same++;
     }
   }
@@ -33,15 +54,15 @@ function similarity(a, b) {
 }
 
 function countEmojis(text) {
-  const customEmojis =
+  const custom =
     text.match(/<a?:\w+:\d+>/g) || [];
 
-  const unicodeEmojis =
+  const unicode =
     text.match(
       /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu
     ) || [];
 
-  return customEmojis.length + unicodeEmojis.length;
+  return custom.length + unicode.length;
 }
 
 async function punish(message, reason) {
@@ -88,70 +109,64 @@ async function punish(message, reason) {
 async function handleMessage(message) {
   if (!message.guild || message.author.bot) return;
 
-  // =========================
   // LONG MESSAGE
-  // =========================
-
   if (
     message.content.length >
-    config.maxMessageLength
+    config.maxMessageLength &&
+    !isWhitelisted(message, "Long Message")
   ) {
     await punish(
       message,
       `Long Message — exceeded ${config.maxMessageLength} characters`
     );
-
     return;
   }
 
-  // =========================
-  // MENTION SPAM
-  // =========================
-
+  // MENTION
   const mentionCount =
     message.mentions.users.size +
     message.mentions.roles.size +
     message.mentions.channels.size +
     (message.mentions.everyone ? 1 : 0);
 
-  if (mentionCount > config.mentionLimit) {
+  if (
+    mentionCount > config.mentionLimit &&
+    !isWhitelisted(message, "Mention")
+  ) {
     await punish(
       message,
       `Mention Spam — ${mentionCount} mentions`
     );
-
     return;
   }
 
-  // =========================
-  // EMOJI SPAM
-  // =========================
+  // EMOJI
+  const emojiCount =
+    countEmojis(message.content);
 
-  const emojiCount = countEmojis(
-    message.content
-  );
-
-  if (emojiCount > config.emojiLimit) {
+  if (
+    emojiCount > config.emojiLimit &&
+    !isWhitelisted(message, "Emoji")
+  ) {
     await punish(
       message,
       `Emoji Spam — ${emojiCount} emojis`
     );
-
     return;
   }
 
-  // =========================
   // SIMILAR MESSAGE SPAM
-  // =========================
+  if (isWhitelisted(message, "Spam")) {
+    return;
+  }
 
   const key =
     `${message.guild.id}:` +
     `${message.channel.id}:` +
     `${message.author.id}`;
 
-  const content = normalize(
-    message.content
-  );
+  const content =
+    normalize(message.content);
 
   if (!content) return;
 
@@ -161,12 +176,12 @@ async function handleMessage(message) {
 
   const now = Date.now();
 
-  const recent = messageHistory
-    .get(key)
-    .filter(
-      (item) =>
-        now - item.time < 30000
-    );
+  const recent =
+    messageHistory
+      .get(key)
+      .filter(
+        item => now - item.time < 30000
+      );
 
   recent.push({
     content,
@@ -175,7 +190,7 @@ async function handleMessage(message) {
 
   const similarCount =
     recent.filter(
-      (item) =>
+      item =>
         similarity(
           item.content,
           content
@@ -188,8 +203,7 @@ async function handleMessage(message) {
   );
 
   if (
-    similarCount >=
-    config.spamLimit
+    similarCount >= config.spamLimit
   ) {
     await punish(
       message,
