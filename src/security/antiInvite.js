@@ -1,5 +1,17 @@
-const { timeoutMember } = require("../utils/timeout");
-const securityLog = require("../utils/securityLog");
+const { timeoutMember } =
+  require("../utils/timeout");
+
+const securityLog =
+  require("../utils/securityLog");
+
+const channelWhitelist =
+  require("../whitelist/channelWhitelist");
+
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
 
 const inviteRegex =
   /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\/[a-zA-Z0-9-]+/i;
@@ -7,17 +19,54 @@ const inviteRegex =
 const linkRegex =
   /https?:\/\/[^\s]+/i;
 
+function isWhitelisted(message) {
+  if (
+    channelWhitelist.has(
+      message.channel.id,
+      "Invite"
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    userWhitelist.has(
+      message.author.id,
+      "Invite"
+    )
+  ) {
+    return true;
+  }
+
+  const roleIds =
+    message.member?.roles?.cache
+      ? [...message.member.roles.cache.keys()]
+      : [];
+
+  return roleWhitelist.has(
+    roleIds,
+    "Invite"
+  );
+}
+
 async function handleMessage(message) {
-  if (!message.guild || message.author.bot) return;
+  if (!message.guild || message.author.bot) {
+    return;
+  }
 
-  const hasInvite = inviteRegex.test(message.content);
-  const hasLink = linkRegex.test(message.content);
+  if (isWhitelisted(message)) {
+    return;
+  }
 
-  if (!hasInvite && !hasLink) return;
+  const hasInvite =
+    inviteRegex.test(message.content);
 
-  // Channel whitelist will be checked here
-  // when the whitelist system is connected.
-  // For now, protection is active.
+  const hasLink =
+    linkRegex.test(message.content);
+
+  if (!hasInvite && !hasLink) {
+    return;
+  }
 
   try {
     await message.delete();
@@ -27,11 +76,12 @@ async function handleMessage(message) {
     ? "Unwanted Discord invite"
     : "Unwanted link";
 
-  const success = await timeoutMember(
-    message.member,
-    5 * 60 * 1000,
-    reason
-  );
+  const success =
+    await timeoutMember(
+      message.member,
+      5 * 60 * 1000,
+      reason
+    );
 
   if (success) {
     await message.channel.send({
@@ -47,7 +97,8 @@ async function handleMessage(message) {
     fields: [
       {
         name: "User",
-        value: `${message.author} (${message.author.id})`
+        value:
+          `${message.author} (${message.author.id})`
       },
       {
         name: "Duration",
