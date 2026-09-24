@@ -9,62 +9,103 @@ const channelWhitelist =
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist-channel")
-    .setDescription("Manage channel whitelist")
+    .setDescription(
+      "Manage channel whitelist"
+    )
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     )
-    .addSubcommand((sub) =>
+
+    .addSubcommand(sub =>
       sub
         .setName("add")
-        .setDescription("Add a channel")
-        .addChannelOption((option) =>
+        .setDescription(
+          "Add a channel to whitelist"
+        )
+        .addChannelOption(option =>
           option
             .setName("channel")
-            .setDescription("Channel")
+            .setDescription(
+              "Channel"
+            )
             .setRequired(true)
         )
-        .addStringOption((option) =>
+        .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Protection type")
+            .setDescription(
+              "Protection type"
+            )
             .setRequired(true)
             .addChoices(
-              { name: "All", value: "All" },
-              { name: "Invite / Link", value: "Invite" },
-              { name: "Spam", value: "Spam" },
-              { name: "Mention", value: "Mention" },
-              { name: "Emoji", value: "Emoji" },
-              { name: "Long Message", value: "Long Message" }
+              {
+                name: "All",
+                value: "All"
+              },
+              {
+                name: "Invite / Link",
+                value: "Invite"
+              },
+              {
+                name: "Spam",
+                value: "Spam"
+              },
+              {
+                name: "Mention",
+                value: "Mention"
+              },
+              {
+                name: "Emoji",
+                value: "Emoji"
+              },
+              {
+                name: "Long Message",
+                value: "Long Message"
+              }
             )
         )
     )
-    .addSubcommand((sub) =>
+
+    .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription("Remove a channel")
-        .addChannelOption((option) =>
+        .setDescription(
+          "Remove a channel from whitelist"
+        )
+        .addChannelOption(option =>
           option
             .setName("channel")
-            .setDescription("Channel")
+            .setDescription(
+              "Channel"
+            )
             .setRequired(true)
         )
     )
-    .addSubcommand((sub) =>
+
+    .addSubcommand(sub =>
       sub
         .setName("list")
-        .setDescription("Show channel whitelist")
+        .setDescription(
+          "Show channel whitelist"
+        )
     ),
 
   async execute(interaction) {
     const subcommand =
       interaction.options.getSubcommand();
 
-    if (subcommand === "add") {
+    if (
+      subcommand === "add"
+    ) {
       const channel =
-        interaction.options.getChannel("channel");
+        interaction.options.getChannel(
+          "channel"
+        );
 
       const type =
-        interaction.options.getString("type");
+        interaction.options.getString(
+          "type"
+        );
 
       channelWhitelist.add(
         channel.id,
@@ -79,11 +120,17 @@ module.exports = {
       });
     }
 
-    if (subcommand === "remove") {
+    if (
+      subcommand === "remove"
+    ) {
       const channel =
-        interaction.options.getChannel("channel");
+        interaction.options.getChannel(
+          "channel"
+        );
 
-      channelWhitelist.remove(channel.id);
+      channelWhitelist.remove(
+        channel.id
+      );
 
       return interaction.reply({
         content:
@@ -103,12 +150,13 @@ module.exports = {
       });
     }
 
-    const text = list
-      .map(
-        ([id, type]) =>
-          `<#${id}> — **${type}**`
-      )
-      .join("\n");
+    const text =
+      list
+        .map(
+          ([id, type]) =>
+            `<#${id}> — **${type}**`
+        )
+        .join("\n");
 
     return interaction.reply({
       content:
