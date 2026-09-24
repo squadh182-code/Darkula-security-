@@ -1,19 +1,107 @@
-const securityLog = require("../utils/securityLog");
+const securityLog =
+  require("../utils/securityLog");
+
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
+function isWhitelisted(
+  executor,
+  type,
+  member
+) {
+  if (!executor) {
+    return false;
+  }
+
+  if (
+    userWhitelist.has(
+      executor.id,
+      type
+    )
+  ) {
+    return true;
+  }
+
+  const roleIds =
+    member?.roles?.cache
+      ? [...member.roles.cache.keys()]
+      : [];
+
+  return roleWhitelist.has(
+    roleIds,
+    type
+  );
+}
 
 async function handleAction({
   guild,
   action,
   executor,
+  responsibleMember,
+  whitelistType,
   reason
 }) {
-  if (!guild) return;
+  if (!guild || !executor) {
+    return false;
+  }
 
-  console.log(
-    `🛡️ Anti-Nuke: ${action}`
-  );
+  // Never process the security bot
+  if (
+    executor.id ===
+    guild.client.user.id
+  ) {
+    return false;
+  }
+
+  /*
+   * =========================
+   * WHITELIST
+   * =========================
+   */
+
+  if (
+    whitelistType &&
+    isWhitelisted(
+      executor,
+      whitelistType,
+      responsibleMember
+    )
+  ) {
+    await securityLog(guild, {
+      title: "Whitelisted Security Action",
+      color: 0x57F287,
+      fields: [
+        {
+          name: "Action",
+          value: action || "Unknown"
+        },
+        {
+          name: "User",
+          value: `${executor}`
+        },
+        {
+          name: "Reason",
+          value:
+            reason ||
+            "Whitelisted action"
+        }
+      ]
+    });
+
+    return true;
+  }
+
+  /*
+   * =========================
+   * SECURITY LOG
+   * =========================
+   */
 
   await securityLog(guild, {
-    title: "Security Action",
+    title: "Anti-Nuke Detection",
     color: 0xFF0000,
     fields: [
       {
@@ -22,18 +110,21 @@ async function handleAction({
       },
       {
         name: "User",
-        value: executor
-          ? `${executor}`
-          : "Unknown"
+        value: `${executor}`
       },
       {
         name: "Reason",
-        value: reason || "Security protection"
+        value:
+          reason ||
+          "Unauthorized security action"
       }
     ]
   });
+
+  return false;
 }
 
 module.exports = {
-  handleAction
+  handleAction,
+  isWhitelisted
 };
