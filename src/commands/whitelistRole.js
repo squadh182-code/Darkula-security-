@@ -3,6 +3,9 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist-role")
@@ -10,14 +13,14 @@ module.exports = {
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("add")
-        .setDescription("Add a role to whitelist")
+        .setDescription("Add a role")
         .addRoleOption((option) =>
           option
             .setName("role")
-            .setDescription("Role to whitelist")
+            .setDescription("Role")
             .setRequired(true)
         )
         .addStringOption((option) =>
@@ -41,26 +44,76 @@ module.exports = {
             )
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("remove")
-        .setDescription("Remove a role from whitelist")
+        .setDescription("Remove a role")
         .addRoleOption((option) =>
           option
             .setName("role")
-            .setDescription("Role to remove")
+            .setDescription("Role")
             .setRequired(true)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("list")
-        .setDescription("Show whitelisted roles")
+        .setDescription("Show role whitelist")
     ),
 
   async execute(interaction) {
-    await interaction.reply({
-      content: "🛡️ Role whitelist system is being connected.",
+    const subcommand =
+      interaction.options.getSubcommand();
+
+    if (subcommand === "add") {
+      const role =
+        interaction.options.getRole("role");
+
+      const type =
+        interaction.options.getString("type");
+
+      roleWhitelist.add(role.id, type);
+
+      return interaction.reply({
+        content:
+          `✅ ${role} added to role whitelist.\n` +
+          `Protection: **${type}**`,
+        ephemeral: true
+      });
+    }
+
+    if (subcommand === "remove") {
+      const role =
+        interaction.options.getRole("role");
+
+      roleWhitelist.remove(role.id);
+
+      return interaction.reply({
+        content:
+          `✅ ${role} removed from role whitelist.`,
+        ephemeral: true
+      });
+    }
+
+    const list = roleWhitelist.list();
+
+    if (!list.length) {
+      return interaction.reply({
+        content: "📋 Role whitelist is empty.",
+        ephemeral: true
+      });
+    }
+
+    const text = list
+      .map(
+        ([id, type]) =>
+          `<@&${id}> — **${type}**`
+      )
+      .join("\n");
+
+    return interaction.reply({
+      content:
+        `📋 **Role Whitelist**\n\n${text}`,
       ephemeral: true
     });
   }
