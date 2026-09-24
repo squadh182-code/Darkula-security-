@@ -1,15 +1,17 @@
 module.exports = {
   botRoleId: "1401958482264985621",
 
-  // পরে এখানে logs channel ID বসাবো
-  securityLogChannelId: "",
+  securityLogChannelId: "1552785563369742437",
+
+  guildId: "1397974278934106182",
 
   timeoutDuration: 5 * 60 * 1000,
 
   spamLimit: 4,
-  mentionLimit: 4,
-  emojiLimit: 4,
+  mentionLimit: 3,
+  emojiLimit: 3,
 
-  // পরে চাইলে change করতে পারবে
-  maxMessageLength: 2000
+  maxMessageLength: 2000,
+
+  similarityThreshold: 0.85
 };
