@@ -1,26 +1,42 @@
-async function securityLog(guild, data) {
-  if (!guild || !data) return;
+const {
+  EmbedBuilder
+} = require("discord.js");
 
-  const channelId = data.channelId;
+const config = require("../config/config");
 
-  if (!channelId) {
-    console.log("⚠️ Security log channel ID not configured.");
-    return;
-  }
+async function securityLog(guild, {
+  title,
+  description,
+  color = 0x5865F2,
+  fields = []
+}) {
+  if (!guild) return;
 
-  const channel = guild.channels.cache.get(channelId);
+  const channel = guild.channels.cache.get(
+    config.securityLogChannelId
+  );
 
   if (!channel) {
     console.log("❌ Security log channel not found.");
     return;
   }
 
+  const embed = new EmbedBuilder()
+    .setTitle(`🛡️ ${title}`)
+    .setDescription(description || null)
+    .setColor(color)
+    .setTimestamp();
+
+  if (fields.length > 0) {
+    embed.addFields(fields);
+  }
+
   try {
     await channel.send({
-      content: data.message || "🛡️ Security Action"
+      embeds: [embed]
     });
   } catch (error) {
-    console.error("❌ Failed to send security log:", error);
+    console.error("❌ Security log failed:", error);
   }
 }
 
