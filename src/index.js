@@ -3,8 +3,17 @@ require("dotenv").config();
 const {
   Client,
   GatewayIntentBits,
-  Partials
+  Partials,
+  REST,
+  Routes
 } = require("discord.js");
+
+const config =
+  require("./config/config");
+
+const {
+  commands
+} = require("./events/interactionCreate");
 
 const client = new Client({
   intents: [
@@ -22,8 +31,83 @@ const client = new Client({
   ]
 });
 
-client.once("ready", () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
+// ===============================
+// EVENTS
+// ===============================
+
+require("./events/ready")(client);
+
+client.on(
+  "guildMemberAdd",
+  require("./events/guildMemberAdd")
+);
+
+client.on(
+  "messageCreate",
+  require("./events/messageCreate")
+);
+
+client.on(
+  "interactionCreate",
+  require("./events/interactionCreate")
+);
+
+client.on(
+  "guildAuditLogEntryCreate",
+  require("./events/guildAuditLogEntryCreate")
+);
+
+// ===============================
+// SLASH COMMAND REGISTER
+// ===============================
+
+client.once("ready", async () => {
+  console.log(
+    `✅ Logged in as ${client.user.tag}`
+  );
+
+  console.log(
+    "🛡️ Security Bot is online"
+  );
+
+  const rest = new REST({
+    version: "10"
+  }).setToken(
+    process.env.DISCORD_TOKEN
+  );
+
+  const commandData =
+    [...commands.values()].map(
+      (command) =>
+        command.data.toJSON()
+    );
+
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        config.guildId
+      ),
+      {
+        body: commandData
+      }
+    );
+
+    console.log(
+      "✅ Slash commands registered."
+    );
+  } catch (error) {
+    console.error(
+      "❌ Slash command registration failed:",
+      error
+    );
+  }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// ===============================
+// LOGIN
+// ===============================
+
+client.login(
+  process.env.DISCORD_TOKEN
+);
