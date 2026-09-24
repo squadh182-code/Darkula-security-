@@ -9,35 +9,29 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("leave")
-    .setDescription(
-      "Leave the current voice channel"
-    ),
+    .setDescription("Leave the voice channel"),
 
   async execute(interaction) {
     if (!interaction.guild) {
       return interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
+        content: "❌ This command can only be used in a server.",
         ephemeral: true
       });
     }
 
-    const left =
-      leaveChannel(
-        interaction.guild.id
-      );
+    const left = leaveChannel(
+      interaction.guild.id
+    );
 
     if (!left) {
       return interaction.reply({
-        content:
-          "❌ Bot কোনো voice channel-এ নেই.",
+        content: "❌ I am not currently in a voice channel.",
         ephemeral: true
       });
     }
 
     return interaction.reply({
-      content:
-        "👋 Left the voice channel."
+      content: "👋 Left the voice channel."
     });
   }
 };
