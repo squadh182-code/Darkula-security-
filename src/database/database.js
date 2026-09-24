@@ -4,6 +4,12 @@ const path = require("path");
 const dataDir = path.join(__dirname, "../../data");
 const dataFile = path.join(dataDir, "whitelist.json");
 
+const defaultData = {
+  users: [],
+  roles: [],
+  channels: []
+};
+
 function ensureDatabase() {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, {
@@ -14,11 +20,7 @@ function ensureDatabase() {
   if (!fs.existsSync(dataFile)) {
     fs.writeFileSync(
       dataFile,
-      JSON.stringify({
-        users: [],
-        roles: [],
-        channels: []
-      }, null, 2)
+      JSON.stringify(defaultData, null, 2)
     );
   }
 }
@@ -27,9 +29,23 @@ function load() {
   ensureDatabase();
 
   try {
-    return JSON.parse(
+    const data = JSON.parse(
       fs.readFileSync(dataFile, "utf8")
     );
+
+    return {
+      users: Array.isArray(data.users)
+        ? data.users
+        : [],
+
+      roles: Array.isArray(data.roles)
+        ? data.roles
+        : [],
+
+      channels: Array.isArray(data.channels)
+        ? data.channels
+        : []
+    };
   } catch {
     return {
       users: [],
