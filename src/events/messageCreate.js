@@ -1,9 +1,20 @@
+const antiSpam =
+  require("../security/antiSpam");
+
+const antiInvite =
+  require("../security/antiInvite");
+
 module.exports = async (message) => {
   if (!message.guild) return;
   if (message.author.bot) return;
 
-  // Security message protection will be added here.
-  // Anti-spam, mention spam, emoji spam,
-  // long message and invite/link protection
-  // will be connected in the next step.
+  try {
+    await antiSpam.handleMessage(message);
+    await antiInvite.handleMessage(message);
+  } catch (error) {
+    console.error(
+      "❌ Message protection error:",
+      error
+    );
+  }
 };
