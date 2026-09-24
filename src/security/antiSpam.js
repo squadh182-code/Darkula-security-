@@ -1,162 +1,334 @@
-const config = require("../config/config");
-const { timeoutMember } = require("../utils/timeout");
-const securityLog = require("../utils/securityLog");
-const channelWhitelist = require("../whitelist/channelWhitelist");
-const userWhitelist = require("../whitelist/userWhitelist");
-const roleWhitelist = require("../whitelist/roleWhitelist");
+const config =
+  require("../config/config");
 
-const messageHistory = new Map();
+const {
+  timeoutMember
+} = require("../utils/timeout");
 
-function isWhitelisted(message, type) {
+const securityLog =
+  require("../utils/securityLog");
+
+const channelWhitelist =
+  require("../whitelist/channelWhitelist");
+
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
+const messageHistory =
+  new Map();
+
+function isWhitelisted(
+  message,
+  type
+) {
   if (
-    channelWhitelist.has(message.channel.id, type)
+    channelWhitelist.has(
+      message.channel.id,
+      type
+    )
   ) {
     return true;
   }
 
   if (
-    userWhitelist.has(message.author.id, type)
+    userWhitelist.has(
+      message.author.id,
+      type
+    )
   ) {
     return true;
   }
 
-  const roleIds = message.member?.roles?.cache
-    ? [...message.member.roles.cache.keys()]
-    : [];
+  const roleIds =
+    message.member?.roles?.cache
+      ? [
+          ...message.member.roles.cache.keys()
+        ]
+      : [];
 
-  return roleWhitelist.has(roleIds, type);
+  return roleWhitelist.has(
+    roleIds,
+    type
+  );
 }
 
 function normalize(text) {
   return text
     .toLowerCase()
-    .replace(/<a?:\w+:\d+>/g, "")
+    .replace(
+      /<a?:\w+:\d+>/g,
+      ""
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function similarity(a, b) {
-  if (!a || !b) return 0;
-  if (a === b) return 1;
+function levenshtein(a, b) {
+  if (a === b) {
+    return 0;
+  }
 
-  const longer = a.length >= b.length ? a : b;
-  const shorter = a.length >= b.length ? b : a;
+  if (!a.length) {
+    return b.length;
+  }
 
-  let same = 0;
+  if (!b.length) {
+    return a.length;
+  }
 
-  for (const char of shorter) {
-    if (longer.includes(char)) {
-      same++;
+  const matrix =
+    Array.from(
+      {
+        length: a.length + 1
+      },
+      () =>
+        new Array(
+          b.length + 1
+        ).fill(0)
+    );
+
+  for (
+    let i = 0;
+    i <= a.length;
+    i++
+  ) {
+    matrix[i][0] = i;
+  }
+
+  for (
+    let j = 0;
+    j <= b.length;
+    j++
+  ) {
+    matrix[0][j] = j;
+  }
+
+  for (
+    let i = 1;
+    i <= a.length;
+    i++
+  ) {
+    for (
+      let j = 1;
+      j <= b.length;
+      j++
+    ) {
+      const cost =
+        a[i - 1] === b[j - 1]
+          ? 0
+          : 1;
+
+      matrix[i][j] =
+        Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] +
+            cost
+        );
     }
   }
 
-  return same / longer.length;
+  return matrix[a.length][b.length];
+}
+
+function similarity(a, b) {
+  if (!a || !b) {
+    return 0;
+  }
+
+  if (a === b) {
+    return 1;
+  }
+
+  const maxLength =
+    Math.max(
+      a.length,
+      b.length
+    );
+
+  if (!maxLength) {
+    return 1;
+  }
+
+  return (
+    1 -
+    levenshtein(a, b) /
+      maxLength
+  );
 }
 
 function countEmojis(text) {
   const custom =
-    text.match(/<a?:\w+:\d+>/g) || [];
+    text.match(
+      /<a?:\w+:\d+>/g
+    ) || [];
 
   const unicode =
     text.match(
       /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu
     ) || [];
 
-  return custom.length + unicode.length;
+  return (
+    custom.length +
+    unicode.length
+  );
 }
 
-async function punish(message, reason) {
+async function punish(
+  message,
+  reason
+) {
   try {
     await message.delete();
   } catch {}
 
-  const success = await timeoutMember(
-    message.member,
-    config.timeoutDuration,
-    reason
-  );
+  const success =
+    await timeoutMember(
+      message.member,
+      config.timeoutDuration,
+      reason
+    );
 
   if (success) {
-    await message.channel.send({
-      content:
-        `⚠️ ${message.author} has been timed out for 5 minutes.\n` +
-        `Reason: ${reason}.`
-    }).catch(() => {});
+    await message.channel
+      .send({
+        content:
+          `⚠️ ${message.author} has been timed out for 5 minutes.\n` +
+          `Reason: ${reason}.`
+      })
+      .catch(() => {});
   }
 
-  await securityLog(message.guild, {
-    title: "User Timed Out",
-    color: 0xFFA500,
-    fields: [
-      {
-        name: "User",
-        value: `${message.author} (${message.author.id})`
-      },
-      {
-        name: "Duration",
-        value: "5 minutes",
-        inline: true
-      },
-      {
-        name: "Reason",
-        value: reason,
-        inline: true
-      }
-    ]
-  });
+  await securityLog(
+    message.guild,
+    {
+      title: "User Timed Out",
+      color: 0xFFA500,
+      fields: [
+        {
+          name: "User",
+          value:
+            `${message.author} (${message.author.id})`
+        },
+        {
+          name: "Duration",
+          value: "5 minutes",
+          inline: true
+        },
+        {
+          name: "Reason",
+          value: reason,
+          inline: true
+        }
+      ]
+    }
+  );
 }
 
-async function handleMessage(message) {
-  if (!message.guild || message.author.bot) return;
+async function handleMessage(
+  message
+) {
+  if (
+    !message.guild ||
+    message.author.bot
+  ) {
+    return;
+  }
 
-  // LONG MESSAGE
+  /*
+   * =========================
+   * LONG MESSAGE
+   * =========================
+   */
+
   if (
     message.content.length >
-    config.maxMessageLength &&
-    !isWhitelisted(message, "Long Message")
+      config.maxMessageLength &&
+    !isWhitelisted(
+      message,
+      "Long Message"
+    )
   ) {
     await punish(
       message,
       `Long Message — exceeded ${config.maxMessageLength} characters`
     );
+
     return;
   }
 
-  // MENTION
+  /*
+   * =========================
+   * MENTION SPAM
+   * =========================
+   */
+
   const mentionCount =
     message.mentions.users.size +
     message.mentions.roles.size +
     message.mentions.channels.size +
-    (message.mentions.everyone ? 1 : 0);
+    (message.mentions.everyone
+      ? 1
+      : 0);
 
   if (
-    mentionCount > config.mentionLimit &&
-    !isWhitelisted(message, "Mention")
+    mentionCount >
+      config.mentionLimit &&
+    !isWhitelisted(
+      message,
+      "Mention"
+    )
   ) {
     await punish(
       message,
       `Mention Spam — ${mentionCount} mentions`
     );
+
     return;
   }
 
-  // EMOJI
+  /*
+   * =========================
+   * EMOJI SPAM
+   * =========================
+   */
+
   const emojiCount =
-    countEmojis(message.content);
+    countEmojis(
+      message.content
+    );
 
   if (
-    emojiCount > config.emojiLimit &&
-    !isWhitelisted(message, "Emoji")
+    emojiCount >
+      config.emojiLimit &&
+    !isWhitelisted(
+      message,
+      "Emoji"
+    )
   ) {
     await punish(
       message,
       `Emoji Spam — ${emojiCount} emojis`
     );
+
     return;
   }
 
-  // SIMILAR MESSAGE SPAM
-  if (isWhitelisted(message, "Spam")) {
+  /*
+   * =========================
+   * SIMILAR MESSAGE SPAM
+   * =========================
+   */
+
+  if (
+    isWhitelisted(
+      message,
+      "Spam"
+    )
+  ) {
     return;
   }
 
@@ -166,21 +338,33 @@ async function handleMessage(message) {
     `${message.author.id}`;
 
   const content =
-    normalize(message.content);
+    normalize(
+      message.content
+    );
 
-  if (!content) return;
-
-  if (!messageHistory.has(key)) {
-    messageHistory.set(key, []);
+  if (!content) {
+    return;
   }
 
-  const now = Date.now();
+  if (
+    !messageHistory.has(key)
+  ) {
+    messageHistory.set(
+      key,
+      []
+    );
+  }
+
+  const now =
+    Date.now();
 
   const recent =
     messageHistory
       .get(key)
       .filter(
-        item => now - item.time < 30000
+        item =>
+          now - item.time <
+          30000
       );
 
   recent.push({
@@ -194,7 +378,8 @@ async function handleMessage(message) {
         similarity(
           item.content,
           content
-        ) >= config.similarityThreshold
+        ) >=
+        config.similarityThreshold
     ).length;
 
   messageHistory.set(
@@ -202,19 +387,28 @@ async function handleMessage(message) {
     recent.slice(-10)
   );
 
+  /*
+   * 1st, 2nd, 3rd = allowed
+   * 4th = punishment
+   */
+
   if (
-    similarCount >= config.spamLimit
+    similarCount >=
+    config.spamLimit
   ) {
     await punish(
       message,
       "Spam — sent the same/similar message 4 times"
     );
 
-    messageHistory.delete(key);
+    messageHistory.delete(
+      key
+    );
   }
 }
 
 module.exports = {
   handleMessage,
-  countEmojis
+  countEmojis,
+  similarity
 };
