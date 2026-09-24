@@ -8,8 +8,7 @@ const {
   Routes
 } = require("discord.js");
 
-const config =
-  require("./config/config");
+const config = require("./config/config");
 
 const {
   commands
@@ -22,8 +21,6 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildModeration,
-
-    // Required for /join to detect the user's voice channel
     GatewayIntentBits.GuildVoiceStates
   ],
 
@@ -62,14 +59,11 @@ client.on(
 client.once("ready", async () => {
   const rest = new REST({
     version: "10"
-  }).setToken(
-    process.env.DISCORD_TOKEN
-  );
+  }).setToken(process.env.DISCORD_TOKEN);
 
-  const commandData =
-    [...commands.values()].map(
-      command => command.data.toJSON()
-    );
+  const commandData = [...commands.values()].map(
+    command => command.data.toJSON()
+  );
 
   try {
     await rest.put(
@@ -82,9 +76,7 @@ client.once("ready", async () => {
       }
     );
 
-    console.log(
-      "✅ Slash commands registered."
-    );
+    console.log("✅ Slash commands registered.");
   } catch (error) {
     console.error(
       "❌ Slash command registration failed:",
@@ -95,22 +87,14 @@ client.once("ready", async () => {
 
 // Environment checks
 if (!process.env.DISCORD_TOKEN) {
-  console.error(
-    "❌ DISCORD_TOKEN is missing."
-  );
-
+  console.error("❌ DISCORD_TOKEN is missing.");
   process.exit(1);
 }
 
 if (!process.env.CLIENT_ID) {
-  console.error(
-    "❌ CLIENT_ID is missing."
-  );
-
+  console.error("❌ CLIENT_ID is missing.");
   process.exit(1);
 }
 
 // Login
-client.login(
-  process.env.DISCORD_TOKEN
-);
+client.login(process.env.DISCORD_TOKEN);
