@@ -1,9 +1,13 @@
-const { PermissionFlagsBits } = require("discord.js");
+const {
+  PermissionFlagsBits
+} = require("discord.js");
 
 function hasPermission(member, permission) {
   if (!member) return false;
 
-  return member.permissions.has(permission);
+  return member.permissions.has(
+    permission
+  );
 }
 
 function canManageRoles(member) {
@@ -27,9 +31,17 @@ function canModerateMembers(member) {
   );
 }
 
+function canViewAuditLog(member) {
+  return hasPermission(
+    member,
+    PermissionFlagsBits.ViewAuditLog
+  );
+}
+
 module.exports = {
   hasPermission,
   canManageRoles,
   canManageChannels,
-  canModerateMembers
+  canModerateMembers,
+  canViewAuditLog
 };
