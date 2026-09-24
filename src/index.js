@@ -55,6 +55,7 @@ client.on(
 
 client.once("ready", async () => {
   console.log("🔄 Refreshing slash commands...");
+  console.log("🔥 NEW INDEX.JS IS RUNNING 🔥");
 
   const rest = new REST({
     version: "10"
@@ -65,7 +66,7 @@ client.once("ready", async () => {
   );
 
   try {
-    // Clear old guild commands
+    // Remove old guild slash commands
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -78,7 +79,7 @@ client.once("ready", async () => {
 
     console.log("🗑️ Old slash commands cleared.");
 
-    // Register fresh commands
+    // Register fresh guild slash commands
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
