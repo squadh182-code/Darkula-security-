@@ -43,9 +43,9 @@ module.exports = async (
 
   if (!executor) return;
 
-  // Never process actions made by our own security bot
   if (
-    executor.id === guild.client.user.id
+    executor.id ===
+    guild.client.user.id
   ) {
     return;
   }
@@ -57,9 +57,7 @@ module.exports = async (
     );
 
   /*
-   * =========================
    * ROLE DELETE
-   * =========================
    */
 
   if (
@@ -87,9 +85,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * ROLE CREATE
-   * =========================
    */
 
   if (
@@ -117,9 +113,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * ROLE UPDATE
-   * =========================
    */
 
   if (
@@ -147,9 +141,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * CHANNEL DELETE
-   * =========================
    */
 
   if (
@@ -177,9 +169,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * CHANNEL CREATE
-   * =========================
    */
 
   if (
@@ -207,9 +197,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
-   * PERMISSION / OVERWRITE
-   * =========================
+   * CHANNEL PERMISSION CHANGE
    */
 
   if (
@@ -233,9 +221,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * MEMBER BAN
-   * =========================
    */
 
   if (
@@ -270,9 +256,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * MEMBER KICK
-   * =========================
    */
 
   if (
@@ -307,9 +291,7 @@ module.exports = async (
   }
 
   /*
-   * =========================
    * MEMBER TIMEOUT
-   * =========================
    */
 
   if (
@@ -361,40 +343,13 @@ module.exports = async (
         }
       ]
     });
-
-    return;
   }
 
   /*
-   * =========================
    * BOT ADD
-   * =========================
+   *
+   * Intentionally not handled here.
+   * antiBot.js handles Bot Add so it
+   * doesn't create duplicate logs.
    */
-
-  if (
-    auditLogEntry.action ===
-    AuditLogEvent.BotAdd
-  ) {
-    const targetId =
-      getTargetId(auditLogEntry);
-
-    await securityLog(guild, {
-      title: "Bot Added",
-      color: 0x5865F2,
-      fields: [
-        {
-          name: "Bot",
-          value: targetId
-            ? `<@${targetId}> (${targetId})`
-            : "Unknown"
-        },
-        {
-          name: "Added By",
-          value: `${executor}`
-        }
-      ]
-    });
-
-    return;
-  }
 };
