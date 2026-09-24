@@ -2,40 +2,97 @@ const {
   PermissionFlagsBits
 } = require("discord.js");
 
-function hasPermission(member, permission) {
-  if (!member) return false;
+function hasPermission(
+  member,
+  permission
+) {
+  if (!member) {
+    return false;
+  }
 
   return member.permissions.has(
     permission
   );
 }
 
-function canManageRoles(member) {
+function canManageRoles(
+  member
+) {
   return hasPermission(
     member,
     PermissionFlagsBits.ManageRoles
   );
 }
 
-function canManageChannels(member) {
+function canManageChannels(
+  member
+) {
   return hasPermission(
     member,
     PermissionFlagsBits.ManageChannels
   );
 }
 
-function canModerateMembers(member) {
+function canModerateMembers(
+  member
+) {
   return hasPermission(
     member,
     PermissionFlagsBits.ModerateMembers
   );
 }
 
-function canViewAuditLog(member) {
+function canViewAuditLog(
+  member
+) {
   return hasPermission(
     member,
     PermissionFlagsBits.ViewAuditLog
   );
+}
+
+function canManageMember(
+  botMember,
+  targetMember
+) {
+  if (
+    !botMember ||
+    !targetMember
+  ) {
+    return false;
+  }
+
+  if (
+    !canManageRoles(botMember)
+  ) {
+    return false;
+  }
+
+  return botMember.roles.highest.comparePositionTo(
+    targetMember.roles.highest
+  ) > 0;
+}
+
+function canManageRole(
+  botMember,
+  targetRole
+) {
+  if (
+    !botMember ||
+    !targetRole
+  ) {
+    return false;
+  }
+
+  if (
+    !canManageRoles(botMember)
+  ) {
+    return false;
+  }
+
+  return botMember.roles.highest.comparePositionTo(
+    targetRole
+  ) > 0;
 }
 
 module.exports = {
@@ -43,5 +100,7 @@ module.exports = {
   canManageRoles,
   canManageChannels,
   canModerateMembers,
-  canViewAuditLog
+  canViewAuditLog,
+  canManageMember,
+  canManageRole
 };
