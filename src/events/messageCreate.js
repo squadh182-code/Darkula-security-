@@ -10,6 +10,11 @@ module.exports = async (message) => {
 
   try {
     await antiSpam.handleMessage(message);
+
+    // If message was deleted by spam protection,
+    // don't process it again.
+    if (!message.channel) return;
+
     await antiInvite.handleMessage(message);
   } catch (error) {
     console.error(
