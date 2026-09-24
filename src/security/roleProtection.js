@@ -1,6 +1,41 @@
-const securityLog = require("../utils/securityLog");
+const securityLog =
+  require("../utils/securityLog");
 
-async function clearUserRoles(member, reason) {
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
+function isWhitelisted(
+  executor,
+  type,
+  member
+) {
+  if (
+    userWhitelist.has(
+      executor.id,
+      type
+    )
+  ) {
+    return true;
+  }
+
+  const roleIds =
+    member?.roles?.cache
+      ? [...member.roles.cache.keys()]
+      : [];
+
+  return roleWhitelist.has(
+    roleIds,
+    type
+  );
+}
+
+async function clearUserRoles(
+  member,
+  reason
+) {
   if (!member) return false;
 
   if (!member.manageable) {
@@ -11,14 +46,15 @@ async function clearUserRoles(member, reason) {
     return false;
   }
 
-  const removableRoles = member.roles.cache.filter(
-    (role) =>
-      role.id !== member.guild.id &&
-      !role.managed &&
-      role.editable
-  );
+  const removableRoles =
+    member.roles.cache.filter(
+      role =>
+        role.id !== member.guild.id &&
+        !role.managed &&
+        role.editable
+    );
 
-  if (removableRoles.size === 0) {
+  if (!removableRoles.size) {
     return false;
   }
 
@@ -46,11 +82,34 @@ async function handleRoleAction({
   executor,
   responsibleMember
 }) {
-  if (!guild) return;
+  if (!guild || !executor) return;
 
-  console.log(
-    `🛡️ Role Protection: ${action}`
-  );
+  const whitelistType = action;
+
+  if (
+    isWhitelisted(
+      executor,
+      whitelistType,
+      responsibleMember
+    )
+  ) {
+    await securityLog(guild, {
+      title: "Whitelisted Security Action",
+      color: 0x57F287,
+      fields: [
+        {
+          name: "Action",
+          value: action
+        },
+        {
+          name: "User",
+          value: `${executor}`
+        }
+      ]
+    });
+
+    return;
+  }
 
   const dangerousActions = [
     "Role Delete",
@@ -61,10 +120,11 @@ async function handleRoleAction({
     dangerousActions.includes(action) &&
     responsibleMember
   ) {
-    const cleared = await clearUserRoles(
-      responsibleMember,
-      `Security Protection — ${action}`
-    );
+    const cleared =
+      await clearUserRoles(
+        responsibleMember,
+        `Security Protection — ${action}`
+      );
 
     if (cleared) {
       await securityLog(guild, {
@@ -74,8 +134,7 @@ async function handleRoleAction({
           {
             name: "User",
             value:
-              `${responsibleMember.user} ` +
-              `(${responsibleMember.id})`
+              `${responsibleMember.user} (${responsibleMember.id})`
           },
           {
             name: "Reason",
@@ -98,9 +157,7 @@ async function handleRoleAction({
       },
       {
         name: "Action By",
-        value: executor
-          ? `${executor}`
-          : "Unknown"
+        value: `${executor}`
       }
     ]
   });
