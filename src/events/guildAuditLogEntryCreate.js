@@ -8,6 +8,9 @@ const roleProtection =
 const channelProtection =
   require("../security/channelProtection");
 
+const antiNuke =
+  require("../security/antiNuke");
+
 const securityLog =
   require("../utils/securityLog");
 
@@ -22,12 +25,8 @@ async function getMember(guild, userId) {
 }
 
 function getTargetId(auditLogEntry) {
-  if (!auditLogEntry.target) {
-    return null;
-  }
-
   return (
-    auditLogEntry.target.id ||
+    auditLogEntry.target?.id ||
     auditLogEntry.targetId ||
     null
   );
@@ -44,7 +43,7 @@ module.exports = async (
 
   if (!executor) return;
 
-  // Ignore actions made by this security bot
+  // Never process actions made by our own security bot
   if (
     executor.id === guild.client.user.id
   ) {
@@ -67,6 +66,15 @@ module.exports = async (
     auditLogEntry.action ===
     AuditLogEvent.RoleDelete
   ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Role Delete",
+      executor,
+      responsibleMember,
+      whitelistType: "Role Delete",
+      reason: "Role deletion detected"
+    });
+
     await roleProtection.handleRoleAction({
       guild,
       action: "Role Delete",
@@ -88,6 +96,15 @@ module.exports = async (
     auditLogEntry.action ===
     AuditLogEvent.RoleCreate
   ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Role Create",
+      executor,
+      responsibleMember,
+      whitelistType: "Role Create",
+      reason: "Role creation detected"
+    });
+
     await roleProtection.handleRoleAction({
       guild,
       action: "Role Create",
@@ -109,6 +126,15 @@ module.exports = async (
     auditLogEntry.action ===
     AuditLogEvent.RoleUpdate
   ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Role Update",
+      executor,
+      responsibleMember,
+      whitelistType: "Role Update",
+      reason: "Role update detected"
+    });
+
     await roleProtection.handleRoleAction({
       guild,
       action: "Role Update",
@@ -130,6 +156,15 @@ module.exports = async (
     auditLogEntry.action ===
     AuditLogEvent.ChannelDelete
   ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Channel Delete",
+      executor,
+      responsibleMember,
+      whitelistType: "Channel Delete",
+      reason: "Channel deletion detected"
+    });
+
     await channelProtection.handleChannelAction({
       guild,
       action: "Delete",
@@ -151,12 +186,47 @@ module.exports = async (
     auditLogEntry.action ===
     AuditLogEvent.ChannelCreate
   ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Channel Create",
+      executor,
+      responsibleMember,
+      whitelistType: "Channel Create",
+      reason: "Channel creation detected"
+    });
+
     await channelProtection.handleChannelAction({
       guild,
       action: "Create",
       channel: auditLogEntry.target,
       executor,
       responsibleMember
+    });
+
+    return;
+  }
+
+  /*
+   * =========================
+   * PERMISSION / OVERWRITE
+   * =========================
+   */
+
+  if (
+    auditLogEntry.action ===
+      AuditLogEvent.ChannelOverwriteCreate ||
+    auditLogEntry.action ===
+      AuditLogEvent.ChannelOverwriteUpdate ||
+    auditLogEntry.action ===
+      AuditLogEvent.ChannelOverwriteDelete
+  ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Channel Permission Change",
+      executor,
+      responsibleMember,
+      reason:
+        "Channel permission/overwrite change detected"
     });
 
     return;
@@ -238,7 +308,7 @@ module.exports = async (
 
   /*
    * =========================
-   * MEMBER UPDATE
+   * MEMBER TIMEOUT
    * =========================
    */
 
@@ -263,18 +333,15 @@ module.exports = async (
     const targetId =
       getTargetId(auditLogEntry);
 
-    const newValue =
-      timeoutChange.new;
-
-    const timeoutActive =
-      newValue !== null &&
-      newValue !== undefined;
+    const active =
+      timeoutChange.new !== null &&
+      timeoutChange.new !== undefined;
 
     await securityLog(guild, {
-      title: timeoutActive
+      title: active
         ? "User Timed Out"
         : "User Timeout Removed",
-      color: timeoutActive
+      color: active
         ? 0xFFA500
         : 0x57F287,
       fields: [
