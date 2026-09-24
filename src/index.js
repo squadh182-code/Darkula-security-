@@ -54,7 +54,7 @@ client.on(
 );
 
 client.once("ready", async () => {
-  console.log("🔄 Registering slash commands...");
+  console.log("🔄 Refreshing slash commands...");
 
   const rest = new REST({
     version: "10"
@@ -65,6 +65,20 @@ client.once("ready", async () => {
   );
 
   try {
+    // Clear old guild commands
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        config.guildId
+      ),
+      {
+        body: []
+      }
+    );
+
+    console.log("🗑️ Old slash commands cleared.");
+
+    // Register fresh commands
     await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
@@ -76,11 +90,12 @@ client.once("ready", async () => {
     );
 
     console.log(
-      `✅ ${commandData.length} slash commands registered.`
+      `✅ ${commandData.length} slash commands registered fresh.`
     );
+
   } catch (error) {
     console.error(
-      "❌ Slash command registration failed:",
+      "❌ Slash command refresh failed:",
       error
     );
   }
