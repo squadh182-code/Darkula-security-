@@ -21,7 +21,10 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildModeration
+    GatewayIntentBits.GuildModeration,
+
+    // Required for /join to detect the user's voice channel
+    GatewayIntentBits.GuildVoiceStates
   ],
 
   partials: [
@@ -31,14 +34,10 @@ const client = new Client({
   ]
 });
 
-/*
- * =========================
- * EVENTS
- * =========================
- */
-
+// Ready event
 require("./events/ready")(client);
 
+// Security events
 client.on(
   "guildMemberAdd",
   require("./events/guildMemberAdd")
@@ -59,24 +58,17 @@ client.on(
   require("./events/guildAuditLogEntryCreate")
 );
 
-/*
- * =========================
- * SLASH COMMAND REGISTER
- * =========================
- */
-
+// Register slash commands
 client.once("ready", async () => {
-  const rest =
-    new REST({
-      version: "10"
-    }).setToken(
-      process.env.DISCORD_TOKEN
-    );
+  const rest = new REST({
+    version: "10"
+  }).setToken(
+    process.env.DISCORD_TOKEN
+  );
 
   const commandData =
     [...commands.values()].map(
-      command =>
-        command.data.toJSON()
+      command => command.data.toJSON()
     );
 
   try {
@@ -101,12 +93,7 @@ client.once("ready", async () => {
   }
 });
 
-/*
- * =========================
- * LOGIN
- * =========================
- */
-
+// Environment checks
 if (!process.env.DISCORD_TOKEN) {
   console.error(
     "❌ DISCORD_TOKEN is missing."
@@ -123,6 +110,7 @@ if (!process.env.CLIENT_ID) {
   process.exit(1);
 }
 
+// Login
 client.login(
   process.env.DISCORD_TOKEN
 );
