@@ -31,9 +31,11 @@ const client = new Client({
   ]
 });
 
-// ===============================
-// EVENTS
-// ===============================
+/*
+ * =========================
+ * EVENTS
+ * =========================
+ */
 
 require("./events/ready")(client);
 
@@ -57,28 +59,23 @@ client.on(
   require("./events/guildAuditLogEntryCreate")
 );
 
-// ===============================
-// SLASH COMMAND REGISTER
-// ===============================
+/*
+ * =========================
+ * SLASH COMMAND REGISTER
+ * =========================
+ */
 
 client.once("ready", async () => {
-  console.log(
-    `✅ Logged in as ${client.user.tag}`
-  );
-
-  console.log(
-    "🛡️ Security Bot is online"
-  );
-
-  const rest = new REST({
-    version: "10"
-  }).setToken(
-    process.env.DISCORD_TOKEN
-  );
+  const rest =
+    new REST({
+      version: "10"
+    }).setToken(
+      process.env.DISCORD_TOKEN
+    );
 
   const commandData =
     [...commands.values()].map(
-      (command) =>
+      command =>
         command.data.toJSON()
     );
 
@@ -104,9 +101,27 @@ client.once("ready", async () => {
   }
 });
 
-// ===============================
-// LOGIN
-// ===============================
+/*
+ * =========================
+ * LOGIN
+ * =========================
+ */
+
+if (!process.env.DISCORD_TOKEN) {
+  console.error(
+    "❌ DISCORD_TOKEN is missing."
+  );
+
+  process.exit(1);
+}
+
+if (!process.env.CLIENT_ID) {
+  console.error(
+    "❌ CLIENT_ID is missing."
+  );
+
+  process.exit(1);
+}
 
 client.login(
   process.env.DISCORD_TOKEN
