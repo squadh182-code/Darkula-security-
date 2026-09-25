@@ -7,19 +7,17 @@ const userWhitelist =
 const roleWhitelist =
   require("../whitelist/roleWhitelist");
 
-function isWhitelisted(
+async function isWhitelisted(
   executor,
   type,
   member
 ) {
-  if (
-    !executor
-  ) {
+  if (!executor) {
     return false;
   }
 
   if (
-    userWhitelist.has(
+    await userWhitelist.has(
       executor.id,
       type
     )
@@ -56,25 +54,23 @@ async function clearUserRoles(
   }
 
   if (
-    member.id === botMember.id
+    member.id ===
+    botMember.id
   ) {
     return false;
   }
 
-  if (!member.manageable) {
-    console.log(
-      `❌ Cannot manage roles for ${
-        member.user?.tag || member.id
-      }`
-    );
-
+  if (
+    !member.manageable
+  ) {
     return false;
   }
 
   const removableRoles =
     member.roles.cache.filter(
       role =>
-        role.id !== member.guild.id &&
+        role.id !==
+          member.guild.id &&
         !role.managed &&
         role.editable &&
         botMember.roles.highest.comparePositionTo(
@@ -95,6 +91,7 @@ async function clearUserRoles(
     );
 
     return true;
+
   } catch (error) {
     console.error(
       "❌ Failed to clear roles:",
@@ -127,33 +124,38 @@ async function handleRoleAction({
   }
 
   if (
-    isWhitelisted(
+    await isWhitelisted(
       executor,
       action,
       responsibleMember
     )
   ) {
-    await securityLog(guild, {
-      title:
-        "Whitelisted Security Action",
-      color: 0x57F287,
-      fields: [
-        {
-          name: "Action",
-          value: action
-        },
-        {
-          name: "User",
-          value: `${executor}`
-        },
-        {
-          name: "Role",
-          value: role
-            ? `${role.name} (${role.id})`
-            : "Unknown"
-        }
-      ]
-    });
+    await securityLog(
+      guild,
+      {
+        title:
+          "Whitelisted Security Action",
+        color: 0x57F287,
+        fields: [
+          {
+            name: "Action",
+            value: action
+          },
+          {
+            name: "User",
+            value:
+              `${executor}`
+          },
+          {
+            name: "Role",
+            value:
+              role
+                ? `${role.name} (${role.id})`
+                : "Unknown"
+          }
+        ]
+      }
+    );
 
     return;
   }
@@ -163,10 +165,13 @@ async function handleRoleAction({
     "Role Create"
   ];
 
-  let rolesCleared = false;
+  let rolesCleared =
+    false;
 
   if (
-    dangerousActions.includes(action) &&
+    dangerousActions.includes(
+      action
+    ) &&
     responsibleMember
   ) {
     rolesCleared =
@@ -177,46 +182,61 @@ async function handleRoleAction({
   }
 
   if (rolesCleared) {
-    await securityLog(guild, {
-      title: "Roles Cleared",
-      color: 0xFF0000,
-      fields: [
-        {
-          name: "User",
-          value:
-            `${responsibleMember.user} (${responsibleMember.id})`
-        },
-        {
-          name: "Reason",
-          value:
-            `Unauthorized ${action}`
-        }
-      ]
-    });
+    await securityLog(
+      guild,
+      {
+        title:
+          "Roles Cleared",
+        color: 0xFF0000,
+        fields: [
+          {
+            name: "User",
+            value:
+              `${responsibleMember.user} (${responsibleMember.id})`
+          },
+          {
+            name: "Reason",
+            value:
+              `Unauthorized ${action}`
+          }
+        ]
+      }
+    );
   }
 
-  await securityLog(guild, {
-    title: `Role ${action}`,
-    color: 0xFF0000,
-    fields: [
-      {
-        name: "Role",
-        value: role
-          ? `${role.name} (${role.id})`
-          : "Unknown"
-      },
-      {
-        name: "Action By",
-        value: `${executor}`
-      },
-      {
-        name: "Protection",
-        value: rolesCleared
-          ? "Roles Cleared"
-          : "Logged"
-      }
-    ]
-  });
+  await securityLog(
+    guild,
+    {
+      title:
+        action === "Role Update"
+          ? "Role Updated"
+          : `Role ${action}`,
+
+      color: 0xFF0000,
+
+      fields: [
+        {
+          name: "Role",
+          value:
+            role
+              ? `${role.name} (${role.id})`
+              : "Unknown"
+        },
+        {
+          name: "Action By",
+          value:
+            `${executor}`
+        },
+        {
+          name: "Protection",
+          value:
+            rolesCleared
+              ? "Roles Cleared"
+              : "Logged"
+        }
+      ]
+    }
+  );
 }
 
 module.exports = {
