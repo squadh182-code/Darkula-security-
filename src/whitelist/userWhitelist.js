@@ -5,6 +5,9 @@ async function add(
   userId,
   type = "All"
 ) {
+  userId = String(userId);
+  type = String(type).trim();
+
   if (type === "All") {
     await database.removeAllWhitelist(
       userId,
@@ -19,34 +22,55 @@ async function add(
   );
 }
 
+
 async function remove(
   userId,
   type = "All"
 ) {
+  userId = String(userId);
+  type = String(type).trim();
+
+  console.log(
+    `🗑️ Removing user whitelist: ${userId} | ${type}`
+  );
+
   if (type === "All") {
-    return database.removeAllWhitelist(
-      userId,
-      "user"
-    );
+    const removed =
+      await database.removeAllWhitelist(
+        userId,
+        "user"
+      );
+
+    return removed > 0;
   }
 
-  return database.removeWhitelist(
-    userId,
-    "user",
-    type
+  const removed =
+    await database.removeWhitelist(
+      userId,
+      "user",
+      type
+    );
+
+  console.log(
+    "🗑️ Removed user whitelist:",
+    removed
   );
+
+  return removed !== null;
 }
+
 
 async function has(
   userId,
   type = "All"
 ) {
   return database.hasWhitelist(
-    userId,
+    String(userId),
     "user",
     type
   );
 }
+
 
 async function list() {
   return database.listWhitelists(
@@ -54,12 +78,14 @@ async function list() {
   );
 }
 
+
 async function getTypes(userId) {
   return database.getWhitelists(
-    userId,
+    String(userId),
     "user"
   );
 }
+
 
 module.exports = {
   add,
