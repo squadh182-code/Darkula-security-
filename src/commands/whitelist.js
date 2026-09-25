@@ -1,10 +1,11 @@
 const {
-  SlashCommandBuilder
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  EmbedBuilder
 } = require("discord.js");
 
 const userWhitelist =
   require("../whitelist/userWhitelist");
-
 
 const TYPES = [
   "All",
@@ -18,197 +19,207 @@ const TYPES = [
   "Spam",
   "Mention",
   "Emoji",
-  "Long Message"
+  "Long Message",
+  "Bad Words"
 ];
 
+const typeChoices =
+  TYPES.map(type => ({
+    name: type,
+    value: type
+  }));
 
-module.exports = {
-
-  data: new SlashCommandBuilder()
+const data =
+  new SlashCommandBuilder()
     .setName("whitelist")
     .setDescription(
-      "Manage user whitelist"
+      "Manage user security whitelists."
+    )
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.Administrator
     )
 
-    // ADD
     .addSubcommand(sub =>
       sub
         .setName("add")
         .setDescription(
-          "Add a user to the whitelist"
+          "Add a user whitelist."
         )
-
         .addUserOption(option =>
           option
             .setName("user")
             .setDescription(
-              "User to whitelist"
+              "User to whitelist."
             )
             .setRequired(true)
         )
-
         .addStringOption(option =>
           option
             .setName("type")
             .setDescription(
-              "Protection type"
+              "Protection type to whitelist."
             )
             .setRequired(true)
             .addChoices(
-              ...TYPES.map(type => ({
-                name: type,
-                value: type
-              }))
+              ...typeChoices
             )
         )
     )
 
-    // REMOVE
     .addSubcommand(sub =>
       sub
         .setName("remove")
         .setDescription(
-          "Remove a user from the whitelist"
+          "Remove a user whitelist."
         )
-
         .addUserOption(option =>
           option
             .setName("user")
             .setDescription(
-              "User to remove"
+              "User to remove from whitelist."
             )
             .setRequired(true)
         )
-
         .addStringOption(option =>
           option
             .setName("type")
             .setDescription(
-              "Whitelist type to remove"
+              "Whitelist type to remove."
             )
             .setRequired(true)
             .addChoices(
-              ...TYPES.map(type => ({
-                name: type,
-                value: type
-              }))
+              ...typeChoices
             )
         )
     )
 
-    // LIST
     .addSubcommand(sub =>
       sub
         .setName("list")
         .setDescription(
-          "List whitelisted users"
+          "List user whitelists."
         )
-    ),
+    );
 
+async function execute(interaction) {
+  const subcommand =
+    interaction.options.getSubcommand();
 
-  async execute(interaction) {
+  if (subcommand === "add") {
+    const user =
+      interaction.options.getUser("user");
 
-    const subcommand =
-      interaction.options.getSubcommand();
+    const type =
+      interaction.options.getString("type");
 
+    await userWhitelist.add(
+      user.id,
+      type
+    );
 
-    // ADD
-    if (subcommand === "add") {
+    const embed =
+      new EmbedBuilder()
+        .setTitle(
+          "User Whitelist Added"
+        )
+        .setDescription(
+          `${user} has been whitelisted for **${type}** protection.`
+        )
+        .setColor(0x57F287)
+        .setTimestamp();
 
-      const user =
-        interaction.options.getUser(
-          "user"
-        );
+    return interaction.reply({
+      embeds: [embed],
+      ephemeral: true
+    });
+  }
 
-      const type =
-        interaction.options.getString(
-          "type"
-        );
+  if (subcommand === "remove") {
+    const user =
+      interaction.options.getUser("user");
 
-      await userWhitelist.add(
+    const type =
+      interaction.options.getString("type");
+
+    const removed =
+      await userWhitelist.remove(
         user.id,
         type
       );
 
-      return interaction.reply(
-        `✅ ${user} has been whitelisted for **${type}**.`
+    const embed =
+      new EmbedBuilder()
+        .setTitle(
+          removed
+            ? "User Whitelist Removed"
+            : "Whitelist Not Found"
+        )
+        .setDescription(
+          removed
+            ? `Removed **${type}** whitelist from ${user}.`
+            : `No **${type}** whitelist was found for ${user}.`
+        )
+        .setColor(
+          removed
+            ? 0x57F287
+            : 0xED4245
+        )
+        .setTimestamp();
+
+    return interaction.reply({
+      embeds: [embed],
+      ephemeral: true
+    });
+  }
+
+  if (subcommand === "list") {
+    const rows =
+      await userWhitelist.list();
+
+    const embed =
+      new EmbedBuilder()
+        .setTitle("User Whitelist")
+        .setColor(0x5865F2)
+        .setTimestamp();
+
+    if (!rows.length) {
+      embed.setDescription(
+        "No user whitelists are configured."
       );
-    }
-
-
-    // REMOVE
-    if (subcommand === "remove") {
-
-      const user =
-        interaction.options.getUser(
-          "user"
-        );
-
-      const type =
-        interaction.options.getString(
-          "type"
-        );
-
-      const removed =
-        await userWhitelist.remove(
-          user.id,
-          type
-        );
-
-      if (!removed) {
-        return interaction.reply(
-          `❌ ${user} does not have the **${type}** whitelist.`
-        );
-      }
-
-      return interaction.reply(
-        `✅ Removed **${type}** whitelist from ${user}.`
-      );
-    }
-
-
-    // LIST
-    if (subcommand === "list") {
-
-      const rows =
-        await userWhitelist.list();
-
-      if (!rows.length) {
-        return interaction.reply(
-          "📋 No users are currently whitelisted."
-        );
-      }
-
-      const grouped =
-        new Map();
+    } else {
+      const grouped = {};
 
       for (const row of rows) {
-
-        if (!grouped.has(
-          row.target_id
-        )) {
-          grouped.set(
-            row.target_id,
-            []
-          );
+        if (!grouped[row.target_id]) {
+          grouped[row.target_id] = [];
         }
 
-        grouped
-          .get(row.target_id)
-          .push(row.whitelist_type);
+        grouped[row.target_id].push(
+          row.whitelist_type
+        );
       }
 
-      const text =
-        [...grouped.entries()]
+      const description =
+        Object.entries(grouped)
           .map(
-            ([id, types]) =>
-              `<@${id}> — ${types.join(", ")}`
+            ([userId, types]) =>
+              `<@${userId}> — ${types.join(", ")}`
           )
           .join("\n");
 
-      return interaction.reply(
-        `📋 **Whitelisted Users**\n\n${text}`
+      embed.setDescription(
+        description
       );
     }
+
+    return interaction.reply({
+      embeds: [embed],
+      ephemeral: true
+    });
   }
+}
+
+module.exports = {
+  data,
+  execute
 };
