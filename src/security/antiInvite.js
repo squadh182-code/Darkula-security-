@@ -22,26 +22,30 @@ const securityLog =
   require("../utils/securityLog");
 
 /* =========================
-   DETECTION
+   LINK DETECTION
 ========================= */
 
 const discordInviteRegex =
   /(discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\/[^\s]+/i;
 
-const urlRegex =
-  /https?:\/\/[^\s]+|www\.[^\s]+/i;
+const instagramRegex =
+  /(?:https?:\/\/)?(?:www\.)?instagram\.com\/[^\s]+/i;
+
+const youtubeRegex =
+  /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/[^\s]+/i;
 
 /* =========================
    WHITELIST
 ========================= */
 
 async function isWhitelisted(
-  message
+  message,
+  type
 ) {
   if (
     await userWhitelist.has(
       message.author.id,
-      "Invite"
+      type
     )
   ) {
     return true;
@@ -58,7 +62,7 @@ async function isWhitelisted(
     roleIds.length &&
     await roleWhitelist.has(
       roleIds,
-      "Invite"
+      type
     )
   ) {
     return true;
@@ -67,7 +71,7 @@ async function isWhitelisted(
   if (
     await channelWhitelist.has(
       message.channel.id,
-      "Invite"
+      type
     )
   ) {
     return true;
@@ -81,7 +85,8 @@ async function isWhitelisted(
 ========================= */
 
 async function punish(
-  message
+  message,
+  reason
 ) {
   if (!message.member) {
     return false;
@@ -96,9 +101,6 @@ async function punish(
 
   await message.delete()
     .catch(() => {});
-
-  const reason =
-    "Unauthorized invite/link.";
 
   const timedOut =
     await timeoutMember(
@@ -172,27 +174,73 @@ async function handleMessage(
     return false;
   }
 
-  const hasInvite =
-    discordInviteRegex.test(
-      message.content
-    );
-
-  const hasLink =
-    urlRegex.test(
-      message.content
-    );
-
-  if (!hasInvite && !hasLink) {
-    return false;
-  }
+  /* DISCORD INVITE */
 
   if (
-    await isWhitelisted(message)
+    discordInviteRegex.test(
+      message.content
+    )
   ) {
-    return false;
+    if (
+      await isWhitelisted(
+        message,
+        "Invite"
+      )
+    ) {
+      return false;
+    }
+
+    return punish(
+      message,
+      "Unauthorized Discord invite."
+    );
   }
 
-  return punish(message);
+  /* INSTAGRAM */
+
+  if (
+    instagramRegex.test(
+      message.content
+    )
+  ) {
+    if (
+      await isWhitelisted(
+        message,
+        "Instagram"
+      )
+    ) {
+      return false;
+    }
+
+    return punish(
+      message,
+      "Unauthorized Instagram link."
+    );
+  }
+
+  /* YOUTUBE */
+
+  if (
+    youtubeRegex.test(
+      message.content
+    )
+  ) {
+    if (
+      await isWhitelisted(
+        message,
+        "YouTube"
+      )
+    ) {
+      return false;
+    }
+
+    return punish(
+      message,
+      "Unauthorized YouTube link."
+    );
+  }
+
+  return false;
 }
 
 module.exports = {
