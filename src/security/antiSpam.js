@@ -113,7 +113,7 @@ function levenshteinDistance(a, b) {
         a[j - 1]
       ) {
         matrix[i][j] =
-          matrix[i - 1][j - 1];
+          matrix[i - 1][j];
       } else {
         matrix[i][j] =
           Math.min(
@@ -153,7 +153,6 @@ async function isWhitelisted(
   const member =
     message.member;
 
-  // User whitelist
   if (
     await userWhitelist.has(
       message.author.id,
@@ -163,7 +162,6 @@ async function isWhitelisted(
     return true;
   }
 
-  // Role whitelist
   const roleIds =
     getRoleIds(member);
 
@@ -177,7 +175,6 @@ async function isWhitelisted(
     return true;
   }
 
-  // Channel whitelist
   if (
     await channelWhitelist.has(
       message.channel.id,
@@ -238,7 +235,7 @@ async function sendTimeoutEmbed(
 }
 
 /* =========================
-   PUNISH
+   PUNISHMENT
 ========================= */
 
 async function punish(
@@ -249,7 +246,6 @@ async function punish(
     return false;
   }
 
-  // Never punish the bot
   if (
     message.author.id ===
     message.client.user.id
@@ -257,11 +253,9 @@ async function punish(
     return false;
   }
 
-  // Delete message
   await message.delete()
     .catch(() => {});
 
-  // Timeout
   const timedOut =
     await timeoutMember(
       message.member,
@@ -273,13 +267,11 @@ async function punish(
     return false;
   }
 
-  // Channel embed
   await sendTimeoutEmbed(
     message,
     reason
   );
 
-  // Security log
   await securityLog(
     message.guild,
     {
@@ -380,7 +372,7 @@ async function handleMessage(
 
   /* =========================
      LONG MESSAGE
-     501+ CHARACTERS
+     301+ CHARACTERS
   ========================= */
 
   if (
@@ -503,7 +495,6 @@ async function handleMessage(
 
   history.push(normalized);
 
-  // Keep recent messages only
   if (history.length > 10) {
     history.shift();
   }
