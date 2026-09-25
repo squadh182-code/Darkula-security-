@@ -19,10 +19,12 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist-channel")
     .setDescription("Manage channel whitelist")
+
     .addSubcommand(sub =>
       sub
         .setName("add")
         .setDescription("Add a channel to the whitelist")
+
         .addChannelOption(option =>
           option
             .setName("channel")
@@ -34,6 +36,7 @@ module.exports = {
               ChannelType.GuildForum
             )
         )
+
         .addStringOption(option =>
           option
             .setName("type")
@@ -47,10 +50,12 @@ module.exports = {
             )
         )
     )
+
     .addSubcommand(sub =>
       sub
         .setName("remove")
         .setDescription("Remove a channel from the whitelist")
+
         .addChannelOption(option =>
           option
             .setName("channel")
@@ -62,6 +67,7 @@ module.exports = {
               ChannelType.GuildForum
             )
         )
+
         .addStringOption(option =>
           option
             .setName("type")
@@ -75,6 +81,7 @@ module.exports = {
             )
         )
     )
+
     .addSubcommand(sub =>
       sub
         .setName("list")
@@ -92,7 +99,7 @@ module.exports = {
       const type =
         interaction.options.getString("type");
 
-      channelWhitelist.add(
+      await channelWhitelist.add(
         channel.id,
         type
       );
@@ -110,7 +117,7 @@ module.exports = {
         interaction.options.getString("type");
 
       const removed =
-        channelWhitelist.remove(
+        await channelWhitelist.remove(
           channel.id,
           type
         );
@@ -127,20 +134,38 @@ module.exports = {
     }
 
     if (subcommand === "list") {
-      const list =
-        channelWhitelist.list();
+      const rows =
+        await channelWhitelist.list();
 
-      if (!list.length) {
+      if (!rows.length) {
         return interaction.reply(
           "📋 No channels are currently whitelisted."
         );
       }
 
-      const text = list
-        .map(item =>
-          `<#${item.id}> — ${item.types.join(", ")}`
-        )
-        .join("\n");
+      const grouped =
+        new Map();
+
+      for (const row of rows) {
+        if (!grouped.has(row.target_id)) {
+          grouped.set(
+            row.target_id,
+            []
+          );
+        }
+
+        grouped
+          .get(row.target_id)
+          .push(row.whitelist_type);
+      }
+
+      const text =
+        [...grouped.entries()]
+          .map(
+            ([id, types]) =>
+              `<#${id}> — ${types.join(", ")}`
+          )
+          .join("\n");
 
       return interaction.reply(
         `📋 **Whitelisted Channels**\n\n${text}`
