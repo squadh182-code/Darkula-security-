@@ -1,10 +1,18 @@
 const database =
   require("../database/database");
 
+
+// ===============================
+// ADD
+// ===============================
+
 async function add(
   roleId,
   type = "All"
 ) {
+  roleId = String(roleId);
+  type = String(type).trim();
+
   if (type === "All") {
     await database.removeAllWhitelist(
       roleId,
@@ -19,23 +27,57 @@ async function add(
   );
 }
 
+
+// ===============================
+// REMOVE
+// ===============================
+
 async function remove(
   roleId,
   type = "All"
 ) {
+  roleId = String(roleId);
+  type = String(type).trim();
+
+  console.log(
+    `🗑️ Removing role whitelist: ${roleId} | ${type}`
+  );
+
+  // Remove everything
   if (type === "All") {
-    return database.removeAllWhitelist(
-      roleId,
-      "role"
+    const removed =
+      await database.removeAllWhitelist(
+        roleId,
+        "role"
+      );
+
+    console.log(
+      `🗑️ Removed ${removed} whitelist row(s).`
     );
+
+    return removed > 0;
   }
 
-  return database.removeWhitelist(
-    roleId,
-    "role",
-    type
+  // Remove specific type
+  const removed =
+    await database.removeWhitelist(
+      roleId,
+      "role",
+      type
+    );
+
+  console.log(
+    "🗑️ Removed whitelist row:",
+    removed
   );
+
+  return removed !== null;
 }
+
+
+// ===============================
+// CHECK
+// ===============================
 
 async function has(
   roleIds,
@@ -48,7 +90,7 @@ async function has(
   for (const roleId of roleIds) {
     const exists =
       await database.hasWhitelist(
-        roleId,
+        String(roleId),
         "role",
         type
       );
@@ -61,18 +103,29 @@ async function has(
   return false;
 }
 
+
+// ===============================
+// LIST
+// ===============================
+
 async function list() {
   return database.listWhitelists(
     "role"
   );
 }
 
+
+// ===============================
+// GET TYPES
+// ===============================
+
 async function getTypes(roleId) {
   return database.getWhitelists(
-    roleId,
+    String(roleId),
     "role"
   );
 }
+
 
 module.exports = {
   add,
