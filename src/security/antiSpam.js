@@ -20,12 +20,12 @@ const roleWhitelist =
 const messageHistory =
   new Map();
 
-function isWhitelisted(
+async function isWhitelisted(
   message,
   type
 ) {
   if (
-    channelWhitelist.has(
+    await channelWhitelist.has(
       message.channel.id,
       type
     )
@@ -34,7 +34,7 @@ function isWhitelisted(
   }
 
   if (
-    userWhitelist.has(
+    await userWhitelist.has(
       message.author.id,
       type
     )
@@ -247,10 +247,10 @@ async function handleMessage(
   if (
     message.content.length >
       config.maxMessageLength &&
-    !isWhitelisted(
+    !(await isWhitelisted(
       message,
       "Long Message"
-    )
+    ))
   ) {
     await punish(
       message,
@@ -277,10 +277,10 @@ async function handleMessage(
   if (
     mentionCount >
       config.mentionLimit &&
-    !isWhitelisted(
+    !(await isWhitelisted(
       message,
       "Mention"
-    )
+    ))
   ) {
     await punish(
       message,
@@ -304,10 +304,10 @@ async function handleMessage(
   if (
     emojiCount >
       config.emojiLimit &&
-    !isWhitelisted(
+    !(await isWhitelisted(
       message,
       "Emoji"
-    )
+    ))
   ) {
     await punish(
       message,
@@ -324,7 +324,7 @@ async function handleMessage(
    */
 
   if (
-    isWhitelisted(
+    await isWhitelisted(
       message,
       "Spam"
     )
