@@ -18,14 +18,16 @@ const roleWhitelist =
   require("../whitelist/roleWhitelist");
 
 const inviteRegex =
-  /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\/[a-zA-Z0-9-]+/i;
+  /(discord\.gg\/|discord\.com\/invite\/|discordapp\.com\/invite\/)/i;
 
 const linkRegex =
   /https?:\/\/[^\s]+/i;
 
-function isWhitelisted(message) {
+async function isWhitelisted(
+  message
+) {
   if (
-    channelWhitelist.has(
+    await channelWhitelist.has(
       message.channel.id,
       "Invite"
     )
@@ -34,7 +36,7 @@ function isWhitelisted(message) {
   }
 
   if (
-    userWhitelist.has(
+    await userWhitelist.has(
       message.author.id,
       "Invite"
     )
@@ -66,24 +68,23 @@ async function handleMessage(
   }
 
   if (
-    isWhitelisted(message)
+    await isWhitelisted(message)
   ) {
     return;
   }
 
-  const hasInvite =
-    inviteRegex.test(
-      message.content
-    );
+  const content =
+    message.content || "";
 
-  const hasLink =
-    linkRegex.test(
-      message.content
-    );
+  const containsInvite =
+    inviteRegex.test(content);
+
+  const containsLink =
+    linkRegex.test(content);
 
   if (
-    !hasInvite &&
-    !hasLink
+    !containsInvite &&
+    !containsLink
   ) {
     return;
   }
@@ -92,16 +93,11 @@ async function handleMessage(
     await message.delete();
   } catch {}
 
-  const reason =
-    hasInvite
-      ? "Unwanted Discord invite"
-      : "Unwanted link";
-
   const success =
     await timeoutMember(
       message.member,
       config.timeoutDuration,
-      reason
+      "Unauthorized invite/link"
     );
 
   if (success) {
@@ -109,7 +105,7 @@ async function handleMessage(
       .send({
         content:
           `⚠️ ${message.author} has been timed out for 5 minutes.\n` +
-          `Reason: ${reason}.`
+          `Reason: Unauthorized invite/link.`
       })
       .catch(() => {});
   }
@@ -118,7 +114,7 @@ async function handleMessage(
     message.guild,
     {
       title: "User Timed Out",
-      color: 0xFF0000,
+      color: 0xFFA500,
       fields: [
         {
           name: "User",
@@ -132,7 +128,8 @@ async function handleMessage(
         },
         {
           name: "Reason",
-          value: reason,
+          value:
+            "Unauthorized invite/link",
           inline: true
         }
       ]
