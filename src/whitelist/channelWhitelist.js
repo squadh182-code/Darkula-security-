@@ -5,6 +5,9 @@ async function add(
   channelId,
   type = "All"
 ) {
+  channelId = String(channelId);
+  type = String(type).trim();
+
   if (type === "All") {
     await database.removeAllWhitelist(
       channelId,
@@ -19,34 +22,55 @@ async function add(
   );
 }
 
+
 async function remove(
   channelId,
   type = "All"
 ) {
+  channelId = String(channelId);
+  type = String(type).trim();
+
+  console.log(
+    `🗑️ Removing channel whitelist: ${channelId} | ${type}`
+  );
+
   if (type === "All") {
-    return database.removeAllWhitelist(
-      channelId,
-      "channel"
-    );
+    const removed =
+      await database.removeAllWhitelist(
+        channelId,
+        "channel"
+      );
+
+    return removed > 0;
   }
 
-  return database.removeWhitelist(
-    channelId,
-    "channel",
-    type
+  const removed =
+    await database.removeWhitelist(
+      channelId,
+      "channel",
+      type
+    );
+
+  console.log(
+    "🗑️ Removed channel whitelist:",
+    removed
   );
+
+  return removed !== null;
 }
+
 
 async function has(
   channelId,
   type = "All"
 ) {
   return database.hasWhitelist(
-    channelId,
+    String(channelId),
     "channel",
     type
   );
 }
+
 
 async function list() {
   return database.listWhitelists(
@@ -54,12 +78,14 @@ async function list() {
   );
 }
 
+
 async function getTypes(channelId) {
   return database.getWhitelists(
-    channelId,
+    String(channelId),
     "channel"
   );
 }
+
 
 module.exports = {
   add,
