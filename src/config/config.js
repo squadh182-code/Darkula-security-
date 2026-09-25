@@ -20,7 +20,7 @@ const config = {
   emojiLimit: 3,
 
   // Long message protection
-  maxMessageLength: 500,
+  maxMessageLength: 300,
 
   // Similar message detection
   similarityThreshold: 0.85
