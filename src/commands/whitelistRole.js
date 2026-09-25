@@ -25,18 +25,12 @@ const TYPES = [
 module.exports = {
 
   data: new SlashCommandBuilder()
-
     .setName("whitelist-role")
-
     .setDescription(
       "Manage role whitelist"
     )
 
-
-    // ===============================
     // ADD
-    // ===============================
-
     .addSubcommand(sub =>
       sub
         .setName("add")
@@ -60,7 +54,6 @@ module.exports = {
               "Protection type"
             )
             .setRequired(true)
-
             .addChoices(
               ...TYPES.map(type => ({
                 name: type,
@@ -70,11 +63,7 @@ module.exports = {
         )
     )
 
-
-    // ===============================
     // REMOVE
-    // ===============================
-
     .addSubcommand(sub =>
       sub
         .setName("remove")
@@ -98,7 +87,6 @@ module.exports = {
               "Whitelist type to remove"
             )
             .setRequired(true)
-
             .addChoices(
               ...TYPES.map(type => ({
                 name: type,
@@ -108,11 +96,7 @@ module.exports = {
         )
     )
 
-
-    // ===============================
     // LIST
-    // ===============================
-
     .addSubcommand(sub =>
       sub
         .setName("list")
@@ -128,10 +112,7 @@ module.exports = {
       interaction.options.getSubcommand();
 
 
-    // ===============================
     // ADD
-    // ===============================
-
     if (subcommand === "add") {
 
       const role =
@@ -144,12 +125,10 @@ module.exports = {
           "type"
         );
 
-
       await roleWhitelist.add(
         role.id,
         type
       );
-
 
       return interaction.reply(
         `✅ ${role} has been whitelisted for **${type}**.`
@@ -157,10 +136,7 @@ module.exports = {
     }
 
 
-    // ===============================
     // REMOVE
-    // ===============================
-
     if (subcommand === "remove") {
 
       const role =
@@ -173,22 +149,17 @@ module.exports = {
           "type"
         );
 
-
       const removed =
         await roleWhitelist.remove(
           role.id,
           type
         );
 
-
       if (!removed) {
-
         return interaction.reply(
           `❌ ${role} does not have the **${type}** whitelist.`
         );
-
       }
-
 
       return interaction.reply(
         `✅ Removed **${type}** whitelist from ${role}.`
@@ -196,50 +167,36 @@ module.exports = {
     }
 
 
-    // ===============================
     // LIST
-    // ===============================
-
     if (subcommand === "list") {
 
       const rows =
         await roleWhitelist.list();
 
-
       if (!rows.length) {
-
         return interaction.reply(
           "📋 No roles are currently whitelisted."
         );
-
       }
-
 
       const grouped =
         new Map();
-
 
       for (const row of rows) {
 
         if (!grouped.has(
           row.target_id
         )) {
-
           grouped.set(
             row.target_id,
             []
           );
-
         }
-
 
         grouped
           .get(row.target_id)
-          .push(
-            row.whitelist_type
-          );
+          .push(row.whitelist_type);
       }
-
 
       const text =
         [...grouped.entries()]
@@ -248,7 +205,6 @@ module.exports = {
               `<@&${id}> — ${types.join(", ")}`
           )
           .join("\n");
-
 
       return interaction.reply(
         `📋 **Whitelisted Roles**\n\n${text}`
