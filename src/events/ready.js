@@ -19,11 +19,11 @@ module.exports = (client) => {
           type: ActivityType.Playing
         }
       ],
-      status: "online"
+      status: "dnd"
     });
 
     console.log(
-      "🎮 Bot status set."
+      "🔴 Bot status set to Do Not Disturb."
     );
   });
 };
