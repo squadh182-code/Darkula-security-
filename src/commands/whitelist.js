@@ -24,16 +24,19 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("whitelist")
     .setDescription("Manage user whitelist")
+
     .addSubcommand(sub =>
       sub
         .setName("add")
         .setDescription("Add a user to the whitelist")
+
         .addUserOption(option =>
           option
             .setName("user")
             .setDescription("User to whitelist")
             .setRequired(true)
         )
+
         .addStringOption(option =>
           option
             .setName("type")
@@ -47,16 +50,19 @@ module.exports = {
             )
         )
     )
+
     .addSubcommand(sub =>
       sub
         .setName("remove")
         .setDescription("Remove a user from the whitelist")
+
         .addUserOption(option =>
           option
             .setName("user")
             .setDescription("User to remove")
             .setRequired(true)
         )
+
         .addStringOption(option =>
           option
             .setName("type")
@@ -70,6 +76,7 @@ module.exports = {
             )
         )
     )
+
     .addSubcommand(sub =>
       sub
         .setName("list")
@@ -87,7 +94,7 @@ module.exports = {
       const type =
         interaction.options.getString("type");
 
-      userWhitelist.add(
+      await userWhitelist.add(
         user.id,
         type
       );
@@ -105,7 +112,7 @@ module.exports = {
         interaction.options.getString("type");
 
       const removed =
-        userWhitelist.remove(
+        await userWhitelist.remove(
           user.id,
           type
         );
@@ -122,25 +129,42 @@ module.exports = {
     }
 
     if (subcommand === "list") {
-      const list =
-        userWhitelist.list();
+      const rows =
+        await userWhitelist.list();
 
-      if (!list.length) {
+      if (!rows.length) {
         return interaction.reply(
           "📋 No users are currently whitelisted."
         );
       }
 
-      const text = list
-        .map(item =>
-          `<@${item.id}> — ${item.types.join(", ")}`
-        )
-        .join("\n");
+      const grouped =
+        new Map();
 
-      return interaction.reply({
-        content:
-          `📋 **Whitelisted Users**\n\n${text}`
-      });
+      for (const row of rows) {
+        if (!grouped.has(row.target_id)) {
+          grouped.set(
+            row.target_id,
+            []
+          );
+        }
+
+        grouped
+          .get(row.target_id)
+          .push(row.whitelist_type);
+      }
+
+      const text =
+        [...grouped.entries()]
+          .map(
+            ([id, types]) =>
+              `<@${id}> — ${types.join(", ")}`
+          )
+          .join("\n");
+
+      return interaction.reply(
+        `📋 **Whitelisted Users**\n\n${text}`
+      );
     }
   }
 };
