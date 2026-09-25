@@ -12,6 +12,11 @@ const pool = new Pool({
   }
 });
 
+
+// ==========================================
+// DATABASE INIT
+// ==========================================
+
 async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS whitelists (
@@ -33,12 +38,19 @@ async function initDatabase() {
 }
 
 
-// ADD
+// ==========================================
+// ADD WHITELIST
+// ==========================================
+
 async function addWhitelist(
   targetId,
   targetType,
   whitelistType
 ) {
+  targetId = String(targetId).trim();
+  targetType = String(targetType).trim();
+  whitelistType = String(whitelistType).trim();
+
   await pool.query(
     `
       INSERT INTO whitelists
@@ -48,72 +60,176 @@ async function addWhitelist(
         whitelist_type
       )
       VALUES ($1, $2, $3)
+
       ON CONFLICT
       (
         target_id,
         target_type,
         whitelist_type
       )
+
       DO NOTHING;
     `,
     [
-      String(targetId),
-      String(targetType),
-      String(whitelistType).trim()
+      targetId,
+      targetType,
+      whitelistType
     ]
+  );
+
+  console.log(
+    `✅ Whitelist saved: ${targetId} | ${targetType} | ${whitelistType}`
   );
 }
 
 
-// REMOVE ONE TYPE
+// ==========================================
+// REMOVE ONE SPECIFIC TYPE
+// ==========================================
+
 async function removeWhitelist(
   targetId,
   targetType,
   whitelistType
 ) {
+  targetId = String(targetId).trim();
+  targetType = String(targetType).trim();
+  whitelistType = String(whitelistType).trim();
+
+  console.log(
+    `🗑️ Removing whitelist:`
+  );
+
+  console.log(
+    `   Target ID: ${targetId}`
+  );
+
+  console.log(
+    `   Target Type: ${targetType}`
+  );
+
+  console.log(
+    `   Whitelist Type: ${whitelistType}`
+  );
+
   const result = await pool.query(
     `
       DELETE FROM whitelists
-      WHERE target_id = $1
-        AND target_type = $2
-        AND LOWER(TRIM(whitelist_type))
-            = LOWER(TRIM($3))
+
+      WHERE TRIM(target_id) = TRIM($1)
+
+        AND LOWER(TRIM(target_type))
+            = LOWER(TRIM($2))
+
+        AND LOWER(
+              REPLACE(
+                TRIM(whitelist_type),
+                ' ',
+                ''
+              )
+            )
+            =
+            LOWER(
+              REPLACE(
+                TRIM($3),
+                ' ',
+                ''
+              )
+            )
+
       RETURNING *;
     `,
     [
-      String(targetId),
-      String(targetType),
-      String(whitelistType)
+      targetId,
+      targetType,
+      whitelistType
     ]
   );
 
-  return result.rows[0] || null;
+
+  if (result.rowCount > 0) {
+
+    console.log(
+      "✅ Whitelist successfully removed:"
+    );
+
+    console.log(
+      result.rows[0]
+    );
+
+    return true;
+  }
+
+
+  console.log(
+    "❌ No matching whitelist row found."
+  );
+
+
+  // DEBUG: Show what actually exists
+  const check =
+    await pool.query(
+      `
+        SELECT *
+        FROM whitelists
+        WHERE TRIM(target_id) = TRIM($1);
+      `,
+      [targetId]
+    );
+
+
+  console.log(
+    "🔎 Existing rows for this target:",
+    check.rows
+  );
+
+
+  return false;
 }
 
 
+// ==========================================
 // REMOVE ALL TYPES
+// ==========================================
+
 async function removeAllWhitelist(
   targetId,
   targetType
 ) {
+  targetId = String(targetId).trim();
+  targetType = String(targetType).trim();
+
   const result = await pool.query(
     `
       DELETE FROM whitelists
-      WHERE target_id = $1
-        AND target_type = $2
+
+      WHERE TRIM(target_id) = TRIM($1)
+
+        AND LOWER(TRIM(target_type))
+            = LOWER(TRIM($2))
+
       RETURNING *;
     `,
     [
-      String(targetId),
-      String(targetType)
+      targetId,
+      targetType
     ]
   );
+
+
+  console.log(
+    `🗑️ Removed ${result.rowCount} whitelist row(s).`
+  );
+
 
   return result.rowCount;
 }
 
 
-// GET TYPES FOR ONE TARGET
+// ==========================================
+// GET TYPES
+// ==========================================
+
 async function getWhitelists(
   targetId,
   targetType
@@ -122,15 +238,20 @@ async function getWhitelists(
     `
       SELECT whitelist_type
       FROM whitelists
-      WHERE target_id = $1
-        AND target_type = $2
+
+      WHERE TRIM(target_id) = TRIM($1)
+
+        AND LOWER(TRIM(target_type))
+            = LOWER(TRIM($2))
+
       ORDER BY whitelist_type;
     `,
     [
-      String(targetId),
-      String(targetType)
+      String(targetId).trim(),
+      String(targetType).trim()
     ]
   );
+
 
   return result.rows.map(
     row => row.whitelist_type
@@ -138,7 +259,10 @@ async function getWhitelists(
 }
 
 
+// ==========================================
 // CHECK WHITELIST
+// ==========================================
+
 async function hasWhitelist(
   targetId,
   targetType,
@@ -148,28 +272,52 @@ async function hasWhitelist(
     `
       SELECT 1
       FROM whitelists
-      WHERE target_id = $1
-        AND target_type = $2
+
+      WHERE TRIM(target_id) = TRIM($1)
+
+        AND LOWER(TRIM(target_type))
+            = LOWER(TRIM($2))
+
         AND (
           LOWER(TRIM(whitelist_type)) = 'all'
+
           OR
-          LOWER(TRIM(whitelist_type))
-            = LOWER(TRIM($3))
+
+          LOWER(
+            REPLACE(
+              TRIM(whitelist_type),
+              ' ',
+              ''
+            )
+          )
+          =
+          LOWER(
+            REPLACE(
+              TRIM($3),
+              ' ',
+              ''
+            )
+          )
         )
+
       LIMIT 1;
     `,
     [
-      String(targetId),
-      String(targetType),
-      String(whitelistType)
+      String(targetId).trim(),
+      String(targetType).trim(),
+      String(whitelistType).trim()
     ]
   );
+
 
   return result.rowCount > 0;
 }
 
 
+// ==========================================
 // LIST
+// ==========================================
+
 async function listWhitelists(
   targetType
 ) {
@@ -179,14 +327,21 @@ async function listWhitelists(
         target_id,
         target_type,
         whitelist_type
+
       FROM whitelists
-      WHERE target_type = $1
-      ORDER BY target_id, whitelist_type;
+
+      WHERE LOWER(TRIM(target_type))
+            = LOWER(TRIM($1))
+
+      ORDER BY
+        target_id,
+        whitelist_type;
     `,
     [
-      String(targetType)
+      String(targetType).trim()
     ]
   );
+
 
   return result.rows;
 }
