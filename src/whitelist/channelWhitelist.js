@@ -22,7 +22,6 @@ async function add(
   );
 }
 
-
 async function remove(
   channelId,
   type = "All"
@@ -51,14 +50,8 @@ async function remove(
       type
     );
 
-  console.log(
-    "🗑️ Removed channel whitelist:",
-    removed
-  );
-
-  return removed !== null;
+  return removed === true;
 }
-
 
 async function has(
   channelId,
@@ -71,13 +64,11 @@ async function has(
   );
 }
 
-
 async function list() {
   return database.listWhitelists(
     "channel"
   );
 }
-
 
 async function getTypes(channelId) {
   return database.getWhitelists(
@@ -85,7 +76,6 @@ async function getTypes(channelId) {
     "channel"
   );
 }
-
 
 module.exports = {
   add,
