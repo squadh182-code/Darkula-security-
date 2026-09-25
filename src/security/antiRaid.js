@@ -7,16 +7,26 @@ const userWhitelist =
 const roleWhitelist =
   require("../whitelist/roleWhitelist");
 
-const joins = new Map();
-const raidCooldown = new Map();
+const joinTracker =
+  new Map();
 
-const JOIN_WINDOW = 10000;
-const RAID_LIMIT = 8;
-const RAID_LOG_COOLDOWN = 60000;
+const JOIN_WINDOW =
+  10000;
 
-function isWhitelisted(member) {
+const RAID_LIMIT =
+  8;
+
+const LOG_COOLDOWN =
+  60000;
+
+const lastRaidLog =
+  new Map();
+
+async function isWhitelisted(
+  member
+) {
   if (
-    userWhitelist.has(
+    await userWhitelist.has(
       member.id,
       "All"
     )
@@ -26,7 +36,9 @@ function isWhitelisted(member) {
 
   const roleIds =
     member.roles?.cache
-      ? [...member.roles.cache.keys()]
+      ? [
+          ...member.roles.cache.keys()
+        ]
       : [];
 
   return roleWhitelist.has(
@@ -35,67 +47,66 @@ function isWhitelisted(member) {
   );
 }
 
-async function handleMemberJoin(member) {
-  if (!member.guild) {
+async function handleMemberJoin(
+  member
+) {
+  if (
+    !member.guild ||
+    member.user.bot
+  ) {
     return false;
   }
 
-  // Ignore bots
-  if (member.user.bot) {
-    return false;
-  }
-
-  // Ignore whitelisted members
-  if (isWhitelisted(member)) {
+  if (
+    await isWhitelisted(member)
+  ) {
     return false;
   }
 
   const guildId =
     member.guild.id;
 
-  const now = Date.now();
-
-  if (!joins.has(guildId)) {
-    joins.set(guildId, []);
-  }
+  const now =
+    Date.now();
 
   const recent =
-    joins
-      .get(guildId)
-      .filter(
-        time =>
-          now - time < JOIN_WINDOW
-      );
+    (
+      joinTracker.get(
+        guildId
+      ) || []
+    ).filter(
+      timestamp =>
+        now - timestamp <
+        JOIN_WINDOW
+    );
 
   recent.push(now);
 
-  joins.set(
+  joinTracker.set(
     guildId,
     recent
   );
 
   if (
-    recent.length < RAID_LIMIT
+    recent.length <
+    RAID_LIMIT
   ) {
     return false;
   }
 
-  /*
-   * Prevent repeated raid log spam
-   */
-
-  const lastRaid =
-    raidCooldown.get(guildId);
+  const lastLog =
+    lastRaidLog.get(
+      guildId
+    ) || 0;
 
   if (
-    lastRaid &&
-    now - lastRaid <
-      RAID_LOG_COOLDOWN
+    now - lastLog <
+    LOG_COOLDOWN
   ) {
     return true;
   }
 
-  raidCooldown.set(
+  lastRaidLog.set(
     guildId,
     now
   );
@@ -103,28 +114,24 @@ async function handleMemberJoin(member) {
   await securityLog(
     member.guild,
     {
-      title: "Possible Raid Detected",
+      title:
+        "Possible Raid Detected",
       color: 0xFF0000,
       fields: [
         {
-          name: "Join Count",
+          name: "Recent Joins",
           value:
-            `${recent.length} members`
+            `${recent.length} joins within 10 seconds`
         },
         {
-          name: "Time Window",
+          name: "Latest User",
           value:
-            "10 seconds"
+            `${member.user} (${member.id})`
         },
         {
-          name: "Threshold",
+          name: "Protection",
           value:
-            `${RAID_LIMIT} members`
-        },
-        {
-          name: "Status",
-          value:
-            "Abnormal join activity detected"
+            "Raid activity detected and logged"
         }
       ]
     }
@@ -133,12 +140,6 @@ async function handleMemberJoin(member) {
   return true;
 }
 
-function cleanupGuild(guildId) {
-  joins.delete(guildId);
-  raidCooldown.delete(guildId);
-}
-
 module.exports = {
-  handleMemberJoin,
-  cleanupGuild
+  handleMemberJoin
 };
