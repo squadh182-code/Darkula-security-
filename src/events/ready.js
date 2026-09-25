@@ -15,7 +15,7 @@ module.exports = (client) => {
     client.user.setPresence({
       activities: [
         {
-          name: "Bᴜᴛᴛᴀ Sʟᴇᴇᴘ....",
+          name: "Sʟᴇᴇᴘʏ Dᴀʀᴋᴜʟᴀ — Sᴛɪʟʟ Wᴀᴛᴄʜɪɴɢ Yᴏᴜ.",
           type: ActivityType.Playing
         }
       ],
@@ -23,7 +23,7 @@ module.exports = (client) => {
     });
 
     console.log(
-      "🎮 Bot status set: Bᴜᴛᴛᴀ Sʟᴇᴇᴘ...."
+      "🎮 Bot status set."
     );
   });
 };
