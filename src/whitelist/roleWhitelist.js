@@ -1,105 +1,43 @@
 const database =
   require("../database/database");
 
-const data = database.load();
-
-const roles = new Map();
-
-for (const item of data.roles) {
-  if (
-    item &&
-    item.id &&
-    item.type
-  ) {
-    if (!roles.has(item.id)) {
-      roles.set(
-        item.id,
-        new Set()
-      );
-    }
-
-    roles.get(item.id).add(item.type);
-  }
-}
-
-function save() {
-  const current =
-    database.load();
-
-  current.roles = [];
-
-  for (const [id, types] of roles.entries()) {
-    for (const type of types) {
-      current.roles.push({
-        id,
-        type
-      });
-    }
-  }
-
-  database.save(current);
-}
-
-function add(
+async function add(
   roleId,
   type = "All"
 ) {
-  if (!roles.has(roleId)) {
-    roles.set(
+  if (type === "All") {
+    await database.removeAllWhitelist(
       roleId,
-      new Set()
+      "role"
     );
   }
 
-  const types =
-    roles.get(roleId);
-
-  if (type === "All") {
-    types.clear();
-    types.add("All");
-  } else {
-    if (types.has("All")) {
-      return;
-    }
-
-    types.add(type);
-  }
-
-  save();
+  await database.addWhitelist(
+    roleId,
+    "role",
+    type
+  );
 }
 
-function remove(
+async function remove(
   roleId,
   type = "All"
 ) {
-  if (!roles.has(roleId)) {
-    return false;
-  }
-
-  const types =
-    roles.get(roleId);
-
   if (type === "All") {
-    roles.delete(roleId);
-    save();
-    return true;
+    return database.removeAllWhitelist(
+      roleId,
+      "role"
+    );
   }
 
-  const removed =
-    types.delete(type);
-
-  if (types.size === 0) {
-    roles.delete(roleId);
-  }
-
-  if (removed) {
-    save();
-  }
-
-  return removed;
+  return database.removeWhitelist(
+    roleId,
+    "role",
+    type
+  );
 }
 
-function has(
+async function has(
   roleIds,
   type = "All"
 ) {
@@ -107,42 +45,33 @@ function has(
     roleIds = [roleIds];
   }
 
-  return roleIds.some(roleId => {
-    if (!roles.has(roleId)) {
-      return false;
+  for (const roleId of roleIds) {
+    const exists =
+      await database.hasWhitelist(
+        roleId,
+        "role",
+        type
+      );
+
+    if (exists) {
+      return true;
     }
-
-    const types =
-      roles.get(roleId);
-
-    return (
-      types.has("All") ||
-      types.has(type)
-    );
-  });
-}
-
-function list() {
-  const result = [];
-
-  for (const [id, types] of roles.entries()) {
-    result.push({
-      id,
-      types: [...types]
-    });
   }
 
-  return result;
+  return false;
 }
 
-function getTypes(roleId) {
-  if (!roles.has(roleId)) {
-    return [];
-  }
+async function list() {
+  return database.listWhitelists(
+    "role"
+  );
+}
 
-  return [
-    ...roles.get(roleId)
-  ];
+async function getTypes(roleId) {
+  return database.getWhitelists(
+    roleId,
+    "role"
+  );
 }
 
 module.exports = {
