@@ -21,18 +21,12 @@ const {
 const securityLog =
   require("../utils/securityLog");
 
-
-// ==========================================
-// MESSAGE HISTORY
-// ==========================================
-
 const messageHistory =
   new Map();
 
-
-// ==========================================
-// NORMALIZE MESSAGE
-// ==========================================
+/* =========================
+   MESSAGE NORMALIZATION
+========================= */
 
 function normalizeMessage(content) {
   return content
@@ -43,10 +37,9 @@ function normalizeMessage(content) {
     .trim();
 }
 
-
-// ==========================================
-// SIMILARITY
-// ==========================================
+/* =========================
+   SIMILARITY
+========================= */
 
 function similarity(a, b) {
   if (!a || !b) return 0;
@@ -65,7 +58,7 @@ function similarity(a, b) {
     return 1;
   }
 
-  let distance =
+  const distance =
     levenshteinDistance(
       longer,
       shorter
@@ -77,22 +70,17 @@ function similarity(a, b) {
   );
 }
 
-
-// ==========================================
-// LEVENSHTEIN
-// ==========================================
-
-function levenshteinDistance(
-  a,
-  b
-) {
+function levenshteinDistance(a, b) {
   const matrix =
     Array.from(
-      { length: b.length + 1 },
+      {
+        length: b.length + 1
+      },
       () =>
-        Array(a.length + 1).fill(0)
+        Array(
+          a.length + 1
+        ).fill(0)
     );
-
 
   for (
     let i = 0;
@@ -102,7 +90,6 @@ function levenshteinDistance(
     matrix[i][0] = i;
   }
 
-
   for (
     let j = 0;
     j <= a.length;
@@ -111,29 +98,23 @@ function levenshteinDistance(
     matrix[0][j] = j;
   }
 
-
   for (
     let i = 1;
     i <= b.length;
     i++
   ) {
-
     for (
       let j = 1;
       j <= a.length;
       j++
     ) {
-
       if (
         b[i - 1] ===
         a[j - 1]
       ) {
-
         matrix[i][j] =
           matrix[i - 1][j - 1];
-
       } else {
-
         matrix[i][j] =
           Math.min(
             matrix[i - 1][j] + 1,
@@ -144,14 +125,12 @@ function levenshteinDistance(
     }
   }
 
-
   return matrix[b.length][a.length];
 }
 
-
-// ==========================================
-// GET USER ROLES
-// ==========================================
+/* =========================
+   ROLE IDS
+========================= */
 
 function getRoleIds(member) {
   if (!member?.roles?.cache) {
@@ -163,10 +142,9 @@ function getRoleIds(member) {
   ];
 }
 
-
-// ==========================================
-// WHITELIST CHECK
-// ==========================================
+/* =========================
+   WHITELIST CHECK
+========================= */
 
 async function isWhitelisted(
   message,
@@ -185,7 +163,6 @@ async function isWhitelisted(
     return true;
   }
 
-
   // Role whitelist
   const roleIds =
     getRoleIds(member);
@@ -200,7 +177,6 @@ async function isWhitelisted(
     return true;
   }
 
-
   // Channel whitelist
   if (
     await channelWhitelist.has(
@@ -211,14 +187,12 @@ async function isWhitelisted(
     return true;
   }
 
-
   return false;
 }
 
-
-// ==========================================
-// SEND TIMEOUT EMBED
-// ==========================================
+/* =========================
+   TIMEOUT EMBED
+========================= */
 
 async function sendTimeoutEmbed(
   message,
@@ -227,7 +201,9 @@ async function sendTimeoutEmbed(
   const embed =
     new EmbedBuilder()
       .setColor(0xED4245)
-      .setTitle("⚠️ Member Timed Out")
+      .setTitle(
+        "⚠️ Member Timed Out"
+      )
       .setDescription(
         `${message.author} has been timed out for **5 minutes**.`
       )
@@ -235,10 +211,19 @@ async function sendTimeoutEmbed(
         {
           name: "Reason",
           value: reason
+        },
+        {
+          name: "Channel",
+          value: `${message.channel}`,
+          inline: true
         }
       )
+      .setThumbnail(
+        message.author.displayAvatarURL({
+          dynamic: true
+        })
+      )
       .setTimestamp();
-
 
   try {
     await message.channel.send({
@@ -252,10 +237,9 @@ async function sendTimeoutEmbed(
   }
 }
 
-
-// ==========================================
-// PUNISH
-// ==========================================
+/* =========================
+   PUNISH
+========================= */
 
 async function punish(
   message,
@@ -265,7 +249,7 @@ async function punish(
     return false;
   }
 
-
+  // Never punish the bot
   if (
     message.author.id ===
     message.client.user.id
@@ -273,13 +257,11 @@ async function punish(
     return false;
   }
 
+  // Delete message
+  await message.delete()
+    .catch(() => {});
 
-  const deleted =
-    await message.delete()
-      .then(() => true)
-      .catch(() => false);
-
-
+  // Timeout
   const timedOut =
     await timeoutMember(
       message.member,
@@ -287,27 +269,27 @@ async function punish(
       reason
     );
 
-
   if (!timedOut) {
     return false;
   }
 
-
-  // Channel notification
+  // Channel embed
   await sendTimeoutEmbed(
     message,
     reason
   );
-
 
   // Security log
   await securityLog(
     message.guild,
     {
       title: "User Timed Out",
+
       description:
         `${message.author} was automatically timed out.`,
+
       color: 0xED4245,
+
       fields: [
         {
           name: "User",
@@ -333,14 +315,12 @@ async function punish(
     }
   );
 
-
   return true;
 }
 
-
-// ==========================================
-// MENTION COUNT
-// ==========================================
+/* =========================
+   MENTION COUNT
+========================= */
 
 function countMentions(message) {
   let count = 0;
@@ -358,13 +338,11 @@ function countMentions(message) {
   return count;
 }
 
-
-// ==========================================
-// EMOJI COUNT
-// ==========================================
+/* =========================
+   EMOJI COUNT
+========================= */
 
 function countEmojis(content) {
-
   const customEmojis =
     content.match(
       /<a?:\w+:\d+>/g
@@ -381,10 +359,9 @@ function countEmojis(content) {
   );
 }
 
-
-// ==========================================
-// HANDLE MESSAGE
-// ==========================================
+/* =========================
+   MAIN HANDLER
+========================= */
 
 async function handleMessage(
   message
@@ -393,117 +370,110 @@ async function handleMessage(
     return false;
   }
 
-
   if (message.author.bot) {
     return false;
   }
-
 
   if (!message.member) {
     return false;
   }
 
-
-  // ========================================
-  // LONG MESSAGE
-  // ========================================
+  /* =========================
+     LONG MESSAGE
+     501+ CHARACTERS
+  ========================= */
 
   if (
     message.content.length >
     config.maxMessageLength
   ) {
-
-    if (
-      !(await isWhitelisted(
+    const whitelisted =
+      await isWhitelisted(
         message,
         "Long Message"
-      ))
-    ) {
+      );
 
+    if (!whitelisted) {
       return punish(
         message,
         `Long Message — exceeded the maximum limit of ${config.maxMessageLength} characters.`
       );
     }
+
+    return false;
   }
 
-
-  // ========================================
-  // MENTION SPAM
-  // ========================================
+  /* =========================
+     MENTION SPAM
+  ========================= */
 
   const mentionCount =
     countMentions(message);
-
 
   if (
     mentionCount >
     config.mentionLimit
   ) {
-
-    if (
-      !(await isWhitelisted(
+    const whitelisted =
+      await isWhitelisted(
         message,
         "Mention"
-      ))
-    ) {
+      );
 
+    if (!whitelisted) {
       return punish(
         message,
         `Mention Spam — sent ${mentionCount} mentions.`
       );
     }
+
+    return false;
   }
 
-
-  // ========================================
-  // EMOJI SPAM
-  // ========================================
+  /* =========================
+     EMOJI SPAM
+  ========================= */
 
   const emojiCount =
     countEmojis(
       message.content
     );
 
-
   if (
     emojiCount >
     config.emojiLimit
   ) {
-
-    if (
-      !(await isWhitelisted(
+    const whitelisted =
+      await isWhitelisted(
         message,
         "Emoji"
-      ))
-    ) {
+      );
 
+    if (!whitelisted) {
       return punish(
         message,
         `Emoji Spam — sent ${emojiCount} emojis.`
       );
     }
+
+    return false;
   }
 
-
-  // ========================================
-  // SIMILAR MESSAGE SPAM
-  // ========================================
+  /* =========================
+     SIMILAR MESSAGE SPAM
+  ========================= */
 
   const normalized =
     normalizeMessage(
       message.content
     );
 
-
   if (!normalized) {
     return false;
   }
 
-
   const key =
     `${message.guild.id}:${message.author.id}`;
-
 
   if (!messageHistory.has(key)) {
     messageHistory.set(
@@ -512,18 +482,14 @@ async function handleMessage(
     );
   }
 
-
   const history =
     messageHistory.get(key);
 
-
   let similarCount = 1;
-
 
   for (
     const previous of history
   ) {
-
     if (
       similarity(
         normalized,
@@ -535,39 +501,39 @@ async function handleMessage(
     }
   }
 
-
   history.push(normalized);
-
 
   // Keep recent messages only
   if (history.length > 10) {
     history.shift();
   }
 
+  /* =========================
+     4TH SIMILAR MESSAGE
+  ========================= */
 
   if (
     similarCount >=
     config.spamLimit
   ) {
-
-    if (
-      !(await isWhitelisted(
+    const whitelisted =
+      await isWhitelisted(
         message,
         "Spam"
-      ))
-    ) {
+      );
 
+    if (!whitelisted) {
       return punish(
         message,
         `Spam — sent the same/similar message ${similarCount} times.`
       );
     }
-  }
 
+    return false;
+  }
 
   return false;
 }
-
 
 module.exports = {
   handleMessage
