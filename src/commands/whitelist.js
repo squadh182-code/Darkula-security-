@@ -5,6 +5,7 @@ const {
 const userWhitelist =
   require("../whitelist/userWhitelist");
 
+
 const TYPES = [
   "All",
   "Channel Delete",
@@ -20,27 +21,38 @@ const TYPES = [
   "Long Message"
 ];
 
+
 module.exports = {
+
   data: new SlashCommandBuilder()
     .setName("whitelist")
-    .setDescription("Manage user whitelist")
+    .setDescription(
+      "Manage user whitelist"
+    )
 
+    // ADD
     .addSubcommand(sub =>
       sub
         .setName("add")
-        .setDescription("Add a user to the whitelist")
+        .setDescription(
+          "Add a user to the whitelist"
+        )
 
         .addUserOption(option =>
           option
             .setName("user")
-            .setDescription("User to whitelist")
+            .setDescription(
+              "User to whitelist"
+            )
             .setRequired(true)
         )
 
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Protection type")
+            .setDescription(
+              "Protection type"
+            )
             .setRequired(true)
             .addChoices(
               ...TYPES.map(type => ({
@@ -51,22 +63,29 @@ module.exports = {
         )
     )
 
+    // REMOVE
     .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription("Remove a user from the whitelist")
+        .setDescription(
+          "Remove a user from the whitelist"
+        )
 
         .addUserOption(option =>
           option
             .setName("user")
-            .setDescription("User to remove")
+            .setDescription(
+              "User to remove"
+            )
             .setRequired(true)
         )
 
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Whitelist type to remove")
+            .setDescription(
+              "Whitelist type to remove"
+            )
             .setRequired(true)
             .addChoices(
               ...TYPES.map(type => ({
@@ -77,22 +96,34 @@ module.exports = {
         )
     )
 
+    // LIST
     .addSubcommand(sub =>
       sub
         .setName("list")
-        .setDescription("List whitelisted users")
+        .setDescription(
+          "List whitelisted users"
+        )
     ),
 
+
   async execute(interaction) {
+
     const subcommand =
       interaction.options.getSubcommand();
 
+
+    // ADD
     if (subcommand === "add") {
+
       const user =
-        interaction.options.getUser("user");
+        interaction.options.getUser(
+          "user"
+        );
 
       const type =
-        interaction.options.getString("type");
+        interaction.options.getString(
+          "type"
+        );
 
       await userWhitelist.add(
         user.id,
@@ -104,12 +135,19 @@ module.exports = {
       );
     }
 
+
+    // REMOVE
     if (subcommand === "remove") {
+
       const user =
-        interaction.options.getUser("user");
+        interaction.options.getUser(
+          "user"
+        );
 
       const type =
-        interaction.options.getString("type");
+        interaction.options.getString(
+          "type"
+        );
 
       const removed =
         await userWhitelist.remove(
@@ -128,7 +166,10 @@ module.exports = {
       );
     }
 
+
+    // LIST
     if (subcommand === "list") {
+
       const rows =
         await userWhitelist.list();
 
@@ -142,7 +183,10 @@ module.exports = {
         new Map();
 
       for (const row of rows) {
-        if (!grouped.has(row.target_id)) {
+
+        if (!grouped.has(
+          row.target_id
+        )) {
           grouped.set(
             row.target_id,
             []
