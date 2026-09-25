@@ -1,10 +1,11 @@
 const {
-  SlashCommandBuilder
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  EmbedBuilder
 } = require("discord.js");
 
 const roleWhitelist =
   require("../whitelist/roleWhitelist");
-
 
 const TYPES = [
   "All",
@@ -18,197 +19,207 @@ const TYPES = [
   "Spam",
   "Mention",
   "Emoji",
-  "Long Message"
+  "Long Message",
+  "Bad Words"
 ];
 
+const typeChoices =
+  TYPES.map(type => ({
+    name: type,
+    value: type
+  }));
 
-module.exports = {
-
-  data: new SlashCommandBuilder()
+const data =
+  new SlashCommandBuilder()
     .setName("whitelist-role")
     .setDescription(
-      "Manage role whitelist"
+      "Manage role security whitelists."
+    )
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.Administrator
     )
 
-    // ADD
     .addSubcommand(sub =>
       sub
         .setName("add")
         .setDescription(
-          "Add a role to the whitelist"
+          "Add a role whitelist."
         )
-
         .addRoleOption(option =>
           option
             .setName("role")
             .setDescription(
-              "Role to whitelist"
+              "Role to whitelist."
             )
             .setRequired(true)
         )
-
         .addStringOption(option =>
           option
             .setName("type")
             .setDescription(
-              "Protection type"
+              "Protection type to whitelist."
             )
             .setRequired(true)
             .addChoices(
-              ...TYPES.map(type => ({
-                name: type,
-                value: type
-              }))
+              ...typeChoices
             )
         )
     )
 
-    // REMOVE
     .addSubcommand(sub =>
       sub
         .setName("remove")
         .setDescription(
-          "Remove a role from the whitelist"
+          "Remove a role whitelist."
         )
-
         .addRoleOption(option =>
           option
             .setName("role")
             .setDescription(
-              "Role to remove"
+              "Role to remove from whitelist."
             )
             .setRequired(true)
         )
-
         .addStringOption(option =>
           option
             .setName("type")
             .setDescription(
-              "Whitelist type to remove"
+              "Whitelist type to remove."
             )
             .setRequired(true)
             .addChoices(
-              ...TYPES.map(type => ({
-                name: type,
-                value: type
-              }))
+              ...typeChoices
             )
         )
     )
 
-    // LIST
     .addSubcommand(sub =>
       sub
         .setName("list")
         .setDescription(
-          "List whitelisted roles"
+          "List role whitelists."
         )
-    ),
+    );
 
+async function execute(interaction) {
+  const subcommand =
+    interaction.options.getSubcommand();
 
-  async execute(interaction) {
+  if (subcommand === "add") {
+    const role =
+      interaction.options.getRole("role");
 
-    const subcommand =
-      interaction.options.getSubcommand();
+    const type =
+      interaction.options.getString("type");
 
+    await roleWhitelist.add(
+      role.id,
+      type
+    );
 
-    // ADD
-    if (subcommand === "add") {
+    const embed =
+      new EmbedBuilder()
+        .setTitle(
+          "Role Whitelist Added"
+        )
+        .setDescription(
+          `${role} has been whitelisted for **${type}** protection.`
+        )
+        .setColor(0x57F287)
+        .setTimestamp();
 
-      const role =
-        interaction.options.getRole(
-          "role"
-        );
+    return interaction.reply({
+      embeds: [embed],
+      ephemeral: true
+    });
+  }
 
-      const type =
-        interaction.options.getString(
-          "type"
-        );
+  if (subcommand === "remove") {
+    const role =
+      interaction.options.getRole("role");
 
-      await roleWhitelist.add(
+    const type =
+      interaction.options.getString("type");
+
+    const removed =
+      await roleWhitelist.remove(
         role.id,
         type
       );
 
-      return interaction.reply(
-        `✅ ${role} has been whitelisted for **${type}**.`
+    const embed =
+      new EmbedBuilder()
+        .setTitle(
+          removed
+            ? "Role Whitelist Removed"
+            : "Whitelist Not Found"
+        )
+        .setDescription(
+          removed
+            ? `Removed **${type}** whitelist from ${role}.`
+            : `No **${type}** whitelist was found for ${role}.`
+        )
+        .setColor(
+          removed
+            ? 0x57F287
+            : 0xED4245
+        )
+        .setTimestamp();
+
+    return interaction.reply({
+      embeds: [embed],
+      ephemeral: true
+    });
+  }
+
+  if (subcommand === "list") {
+    const rows =
+      await roleWhitelist.list();
+
+    const embed =
+      new EmbedBuilder()
+        .setTitle("Role Whitelist")
+        .setColor(0x5865F2)
+        .setTimestamp();
+
+    if (!rows.length) {
+      embed.setDescription(
+        "No role whitelists are configured."
       );
-    }
-
-
-    // REMOVE
-    if (subcommand === "remove") {
-
-      const role =
-        interaction.options.getRole(
-          "role"
-        );
-
-      const type =
-        interaction.options.getString(
-          "type"
-        );
-
-      const removed =
-        await roleWhitelist.remove(
-          role.id,
-          type
-        );
-
-      if (!removed) {
-        return interaction.reply(
-          `❌ ${role} does not have the **${type}** whitelist.`
-        );
-      }
-
-      return interaction.reply(
-        `✅ Removed **${type}** whitelist from ${role}.`
-      );
-    }
-
-
-    // LIST
-    if (subcommand === "list") {
-
-      const rows =
-        await roleWhitelist.list();
-
-      if (!rows.length) {
-        return interaction.reply(
-          "📋 No roles are currently whitelisted."
-        );
-      }
-
-      const grouped =
-        new Map();
+    } else {
+      const grouped = {};
 
       for (const row of rows) {
-
-        if (!grouped.has(
-          row.target_id
-        )) {
-          grouped.set(
-            row.target_id,
-            []
-          );
+        if (!grouped[row.target_id]) {
+          grouped[row.target_id] = [];
         }
 
-        grouped
-          .get(row.target_id)
-          .push(row.whitelist_type);
+        grouped[row.target_id].push(
+          row.whitelist_type
+        );
       }
 
-      const text =
-        [...grouped.entries()]
+      const description =
+        Object.entries(grouped)
           .map(
-            ([id, types]) =>
-              `<@&${id}> — ${types.join(", ")}`
+            ([roleId, types]) =>
+              `<@&${roleId}> — ${types.join(", ")}`
           )
           .join("\n");
 
-      return interaction.reply(
-        `📋 **Whitelisted Roles**\n\n${text}`
+      embed.setDescription(
+        description
       );
     }
+
+    return interaction.reply({
+      embeds: [embed],
+      ephemeral: true
+    });
   }
+}
+
+module.exports = {
+  data,
+  execute
 };
