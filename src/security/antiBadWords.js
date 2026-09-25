@@ -1,6 +1,15 @@
 const config =
   require("../config/config");
 
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
+const channelWhitelist =
+  require("../whitelist/channelWhitelist");
+
 const {
   timeoutMember
 } = require("../utils/timeout");
@@ -17,7 +26,6 @@ const securityLog =
 ========================= */
 
 const BAD_WORDS = [
-  // English
   "fuck",
   "fucker",
   "fucking",
@@ -36,7 +44,6 @@ const BAD_WORDS = [
   "slut",
   "whore",
 
-  // Common Romanized Bangla profanity
   "banchod",
   "bal",
   "baal",
@@ -44,7 +51,6 @@ const BAD_WORDS = [
   "chod",
   "choda",
   "chodna",
-  "chodon",
   "harami",
   "kuttarbaccha",
   "kuttar bachcha",
@@ -52,13 +58,10 @@ const BAD_WORDS = [
   "shuarer bachcha",
   "magibaj",
   "khanki",
-  "khan**",
-  "madarchod",
   "magi",
   "bosti",
   "gadha",
 
-  // Hindi / Roman Hindi
   "madarchod",
   "madharchod",
   "bhenchod",
@@ -67,7 +70,6 @@ const BAD_WORDS = [
   "chutiye",
   "gaand",
   "gandu",
-  "harami",
   "kamina",
   "kamine",
   "randi",
@@ -79,7 +81,7 @@ const BAD_WORDS = [
 ];
 
 /* =========================
-   BANGLA SCRIPT
+   BANGLA
 ========================= */
 
 const BANGLA_BAD_WORD_PATTERNS = [
@@ -105,7 +107,10 @@ function normalizeText(text) {
     .toLowerCase()
     .normalize("NFKC")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .replace(/[\s\-_.,!?'"`~@#$%^&*()[\]{}:;|\\/+=<>]/g, "")
+    .replace(
+      /[\s\-_.,!?'"`~@#$%^&*()[\]{}:;|\\/+=<>]/g,
+      ""
+    )
     .trim();
 }
 
@@ -118,8 +123,6 @@ function containsBadWord(content) {
     return null;
   }
 
-  /* Bangla script */
-
   for (
     const pattern of BANGLA_BAD_WORD_PATTERNS
   ) {
@@ -127,8 +130,6 @@ function containsBadWord(content) {
       return "Bangla profanity";
     }
   }
-
-  /* Roman / English */
 
   const normalized =
     normalizeText(content);
@@ -149,6 +150,49 @@ function containsBadWord(content) {
   }
 
   return null;
+}
+
+/* =========================
+   WHITELIST
+========================= */
+
+async function isWhitelisted(message) {
+  if (
+    await userWhitelist.has(
+      message.author.id,
+      "Bad Words"
+    )
+  ) {
+    return true;
+  }
+
+  const roleIds =
+    message.member?.roles?.cache
+      ? [
+          ...message.member.roles.cache.keys()
+        ]
+      : [];
+
+  if (
+    roleIds.length &&
+    await roleWhitelist.has(
+      roleIds,
+      "Bad Words"
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    await channelWhitelist.has(
+      message.channel.id,
+      "Bad Words"
+    )
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /* =========================
@@ -230,9 +274,7 @@ async function punish(
    MAIN
 ========================= */
 
-async function handleMessage(
-  message
-) {
+async function handleMessage(message) {
   if (!message.guild) {
     return false;
   }
@@ -242,6 +284,12 @@ async function handleMessage(
   }
 
   if (!message.content) {
+    return false;
+  }
+
+  if (
+    await isWhitelisted(message)
+  ) {
     return false;
   }
 
