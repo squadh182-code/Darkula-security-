@@ -15,61 +15,86 @@ const TYPES = [
   "Spam",
   "Mention",
   "Emoji",
-  "Long Message"
+  "Long Message",
+  "Bad Words"
 ];
 
-const typeChoices = TYPES.map(type => ({
-  name: type,
-  value: type
-}));
+const typeChoices =
+  TYPES.map(type => ({
+    name: type,
+    value: type
+  }));
 
 const data =
   new SlashCommandBuilder()
     .setName("whitelist-channel")
-    .setDescription("Manage channel security whitelists.")
+    .setDescription(
+      "Manage channel security whitelists."
+    )
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     )
+
     .addSubcommand(sub =>
       sub
         .setName("add")
-        .setDescription("Add a channel whitelist.")
+        .setDescription(
+          "Add a channel whitelist."
+        )
         .addChannelOption(option =>
           option
             .setName("channel")
-            .setDescription("Channel to whitelist.")
+            .setDescription(
+              "Channel to whitelist."
+            )
             .setRequired(true)
         )
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Protection type to whitelist.")
+            .setDescription(
+              "Protection type to whitelist."
+            )
             .setRequired(true)
-            .addChoices(...typeChoices)
+            .addChoices(
+              ...typeChoices
+            )
         )
     )
+
     .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription("Remove a channel whitelist.")
+        .setDescription(
+          "Remove a channel whitelist."
+        )
         .addChannelOption(option =>
           option
             .setName("channel")
-            .setDescription("Channel to remove from whitelist.")
+            .setDescription(
+              "Channel to remove from whitelist."
+            )
             .setRequired(true)
         )
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Whitelist type to remove.")
+            .setDescription(
+              "Whitelist type to remove."
+            )
             .setRequired(true)
-            .addChoices(...typeChoices)
+            .addChoices(
+              ...typeChoices
+            )
         )
     )
+
     .addSubcommand(sub =>
       sub
         .setName("list")
-        .setDescription("List channel whitelists.")
+        .setDescription(
+          "List channel whitelists."
+        )
     );
 
 async function execute(interaction) {
@@ -90,7 +115,9 @@ async function execute(interaction) {
 
     const embed =
       new EmbedBuilder()
-        .setTitle("Channel Whitelist Added")
+        .setTitle(
+          "Channel Whitelist Added"
+        )
         .setDescription(
           `${channel} has been whitelisted for **${type}** protection.`
         )
@@ -170,12 +197,15 @@ async function execute(interaction) {
 
       const description =
         Object.entries(grouped)
-          .map(([channelId, types]) =>
-            `<#${channelId}> — ${types.join(", ")}`
+          .map(
+            ([channelId, types]) =>
+              `<#${channelId}> — ${types.join(", ")}`
           )
           .join("\n");
 
-      embed.setDescription(description);
+      embed.setDescription(
+        description
+      );
     }
 
     return interaction.reply({
