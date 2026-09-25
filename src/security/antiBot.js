@@ -14,10 +14,26 @@ const userWhitelist =
 const roleWhitelist =
   require("../whitelist/roleWhitelist");
 
-function isWhitelisted(member, executor) {
+function getExecutorRoleIds(
+  member
+) {
+  return member?.roles?.cache
+    ? [
+        ...member.roles.cache.keys()
+      ]
+    : [];
+}
+
+async function isWhitelisted(
+  executor,
+  responsibleMember
+) {
+  if (!executor) {
+    return false;
+  }
+
   if (
-    executor &&
-    userWhitelist.has(
+    await userWhitelist.has(
       executor.id,
       "Bot Add"
     )
@@ -26,9 +42,9 @@ function isWhitelisted(member, executor) {
   }
 
   const roleIds =
-    executor?.roles?.cache
-      ? [...executor.roles.cache.keys()]
-      : [];
+    getExecutorRoleIds(
+      responsibleMember
+    );
 
   return roleWhitelist.has(
     roleIds,
@@ -43,20 +59,23 @@ async function findBotAdder(
   try {
     const logs =
       await guild.fetchAuditLogs({
-        type: AuditLogEvent.BotAdd,
+        type:
+          AuditLogEvent.BotAdd,
         limit: 10
       });
 
     const entry =
       logs.entries.find(
         entry =>
-          entry.target?.id === botUserId &&
+          entry.target?.id ===
+            botUserId &&
           Date.now() -
             entry.createdTimestamp <
             15000
       );
 
     return entry || null;
+
   } catch (error) {
     console.error(
       "❌ Failed to fetch Bot Add audit log:",
@@ -67,7 +86,9 @@ async function findBotAdder(
   }
 }
 
-async function handleBotAdd(member) {
+async function handleBotAdd(
+  member
+) {
   if (
     !member.guild ||
     !member.user.bot
@@ -75,7 +96,6 @@ async function handleBotAdd(member) {
     return;
   }
 
-  // Don't process the security bot itself
   if (
     member.id ===
     member.guild.client.user.id
@@ -86,12 +106,6 @@ async function handleBotAdd(member) {
   const guild =
     member.guild;
 
-  /*
-   * =========================
-   * FIND WHO ADDED THE BOT
-   * =========================
-   */
-
   const auditEntry =
     await findBotAdder(
       guild,
@@ -99,9 +113,11 @@ async function handleBotAdd(member) {
     );
 
   const executor =
-    auditEntry?.executor || null;
+    auditEntry?.executor ||
+    null;
 
-  let responsibleMember = null;
+  let responsibleMember =
+    null;
 
   if (executor) {
     try {
@@ -111,12 +127,6 @@ async function handleBotAdd(member) {
         );
     } catch {}
   }
-
-  /*
-   * =========================
-   * BOT ROLE
-   * =========================
-   */
 
   const role =
     guild.roles.cache.get(
@@ -144,56 +154,53 @@ async function handleBotAdd(member) {
     }
   }
 
-  /*
-   * =========================
-   * WHITELIST CHECK
-   * =========================
-   */
-
   const whitelisted =
-    isWhitelisted(
-      responsibleMember,
-      executor
+    await isWhitelisted(
+      executor,
+      responsibleMember
     );
 
-  /*
-   * =========================
-   * SECURITY LOG
-   * =========================
-   */
+  await securityLog(
+    guild,
+    {
+      title:
+        whitelisted
+          ? "Whitelisted Bot Added"
+          : "Bot Added",
 
-  await securityLog(guild, {
-    title: whitelisted
-      ? "Whitelisted Bot Added"
-      : "Bot Added",
-    color: whitelisted
-      ? 0x57F287
-      : 0x5865F2,
-    fields: [
-      {
-        name: "Bot",
-        value:
-          `${member.user} (${member.user.id})`
-      },
-      {
-        name: "Added By",
-        value: executor
-          ? `${executor}`
-          : "Unknown"
-      },
-      {
-        name: "Protection",
-        value:
-          "Bot was not automatically punished"
-      },
-      {
-        name: "Bot Role",
-        value: role
-          ? `<@&${role.id}>`
-          : "Role not found"
-      }
-    ]
-  });
+      color:
+        whitelisted
+          ? 0x57F287
+          : 0x5865F2,
+
+      fields: [
+        {
+          name: "Bot",
+          value:
+            `${member.user} (${member.user.id})`
+        },
+        {
+          name: "Added By",
+          value:
+            executor
+              ? `${executor}`
+              : "Unknown"
+        },
+        {
+          name: "Protection",
+          value:
+            "Bot was not automatically punished"
+        },
+        {
+          name: "Bot Role",
+          value:
+            role
+              ? `<@&${role.id}>`
+              : "Role not found"
+        }
+      ]
+    }
+  );
 }
 
 module.exports = {
