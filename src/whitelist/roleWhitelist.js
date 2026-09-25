@@ -1,11 +1,6 @@
 const database =
   require("../database/database");
 
-
-// ===============================
-// ADD
-// ===============================
-
 async function add(
   roleId,
   type = "All"
@@ -28,10 +23,6 @@ async function add(
 }
 
 
-// ===============================
-// REMOVE
-// ===============================
-
 async function remove(
   roleId,
   type = "All"
@@ -43,7 +34,6 @@ async function remove(
     `🗑️ Removing role whitelist: ${roleId} | ${type}`
   );
 
-  // Remove everything
   if (type === "All") {
     const removed =
       await database.removeAllWhitelist(
@@ -51,14 +41,9 @@ async function remove(
         "role"
       );
 
-    console.log(
-      `🗑️ Removed ${removed} whitelist row(s).`
-    );
-
     return removed > 0;
   }
 
-  // Remove specific type
   const removed =
     await database.removeWhitelist(
       roleId,
@@ -67,17 +52,13 @@ async function remove(
     );
 
   console.log(
-    "🗑️ Removed whitelist row:",
+    "🗑️ Removed role whitelist:",
     removed
   );
 
   return removed !== null;
 }
 
-
-// ===============================
-// CHECK
-// ===============================
 
 async function has(
   roleIds,
@@ -104,20 +85,12 @@ async function has(
 }
 
 
-// ===============================
-// LIST
-// ===============================
-
 async function list() {
   return database.listWhitelists(
     "role"
   );
 }
 
-
-// ===============================
-// GET TYPES
-// ===============================
 
 async function getTypes(roleId) {
   return database.getWhitelists(
