@@ -8,30 +8,53 @@ const {
   Routes
 } = require("discord.js");
 
-const config = require("./config/config");
+const config =
+  require("./config/config");
+
+const database =
+  require("./database/database");
 
 const {
   commands
 } = require("./events/interactionCreate");
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildVoiceStates
-  ],
+if (!process.env.DISCORD_TOKEN) {
+  console.error(
+    "❌ DISCORD_TOKEN is missing."
+  );
 
-  partials: [
-    Partials.Channel,
-    Partials.GuildMember,
-    Partials.User
-  ]
-});
+  process.exit(1);
+}
 
-require("./events/ready")(client);
+if (!process.env.CLIENT_ID) {
+  console.error(
+    "❌ CLIENT_ID is missing."
+  );
+
+  process.exit(1);
+}
+
+const client =
+  new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildModeration,
+      GatewayIntentBits.GuildVoiceStates
+    ],
+
+    partials: [
+      Partials.Channel,
+      Partials.GuildMember,
+      Partials.User
+    ]
+  });
+
+require("./events/ready")(
+  client
+);
 
 client.on(
   "guildMemberAdd",
@@ -53,63 +76,88 @@ client.on(
   require("./events/guildAuditLogEntryCreate")
 );
 
-client.once("ready", async () => {
-  console.log("🔄 Refreshing slash commands...");
-  console.log("🔥 NEW INDEX.JS IS RUNNING 🔥");
-
-  const rest = new REST({
-    version: "10"
-  }).setToken(process.env.DISCORD_TOKEN);
-
-  const commandData = [...commands.values()].map(
-    command => command.data.toJSON()
-  );
-
-  try {
-    // Remove old guild slash commands
-    await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        config.guildId
-      ),
-      {
-        body: []
-      }
-    );
-
-    console.log("🗑️ Old slash commands cleared.");
-
-    // Register fresh guild slash commands
-    await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        config.guildId
-      ),
-      {
-        body: commandData
-      }
+client.once(
+  "ready",
+  async () => {
+    console.log(
+      "🔄 Refreshing slash commands..."
     );
 
     console.log(
-      `✅ ${commandData.length} slash commands registered fresh.`
+      "🔥 NEW INDEX.JS IS RUNNING 🔥"
+    );
+
+    const rest =
+      new REST({
+        version: "10"
+      }).setToken(
+        process.env.DISCORD_TOKEN
+      );
+
+    const commandData =
+      [...commands.values()]
+        .map(command =>
+          command.data.toJSON()
+        );
+
+    try {
+      await rest.put(
+        Routes.applicationGuildCommands(
+          process.env.CLIENT_ID,
+          config.guildId
+        ),
+        {
+          body: []
+        }
+      );
+
+      console.log(
+        "🗑️ Old slash commands cleared."
+      );
+
+      await rest.put(
+        Routes.applicationGuildCommands(
+          process.env.CLIENT_ID,
+          config.guildId
+        ),
+        {
+          body: commandData
+        }
+      );
+
+      console.log(
+        `✅ ${commandData.length} slash commands registered fresh.`
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ Slash command refresh failed:",
+        error
+      );
+    }
+  }
+);
+
+async function startBot() {
+  try {
+    await database.initDatabase();
+
+    console.log(
+      "🗄️ Database initialized."
+    );
+
+    await client.login(
+      process.env.DISCORD_TOKEN
     );
 
   } catch (error) {
     console.error(
-      "❌ Slash command refresh failed:",
+      "❌ Bot startup failed:",
       error
     );
+
+    process.exit(1);
   }
-});
-
-if (!process.env.DISCORD_TOKEN) {
-  console.error("❌ DISCORD_TOKEN is missing.");
-  process.exit(1);
 }
 
-if (!process.env.CLIENT_ID) {
-  console.error("❌ CLIENT_ID is missing.");
-  process.exit(1);
-}
-
-client.login(process.env.DISCORD_TOKEN);
+startBot();
