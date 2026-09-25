@@ -1,3 +1,6 @@
+const antiBadWords =
+  require("../security/antiBadWords");
+
 const antiSpam =
   require("../security/antiSpam");
 
@@ -16,6 +19,19 @@ module.exports = async (
   }
 
   try {
+    /* BAD WORDS */
+
+    const badWordPunished =
+      await antiBadWords.handleMessage(
+        message
+      );
+
+    if (badWordPunished) {
+      return;
+    }
+
+    /* SPAM */
+
     const spamPunished =
       await antiSpam.handleMessage(
         message
@@ -24,6 +40,8 @@ module.exports = async (
     if (spamPunished) {
       return;
     }
+
+    /* INVITES / LINKS */
 
     await antiInvite.handleMessage(
       message
