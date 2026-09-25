@@ -33,10 +33,7 @@ async function initDatabase() {
 }
 
 
-// ===============================
-// ADD WHITELIST
-// ===============================
-
+// ADD
 async function addWhitelist(
   targetId,
   targetType,
@@ -45,19 +42,18 @@ async function addWhitelist(
   await pool.query(
     `
       INSERT INTO whitelists
-        (
-          target_id,
-          target_type,
-          whitelist_type
-        )
-      VALUES
-        ($1, $2, $3)
+      (
+        target_id,
+        target_type,
+        whitelist_type
+      )
+      VALUES ($1, $2, $3)
       ON CONFLICT
-        (
-          target_id,
-          target_type,
-          whitelist_type
-        )
+      (
+        target_id,
+        target_type,
+        whitelist_type
+      )
       DO NOTHING;
     `,
     [
@@ -69,10 +65,7 @@ async function addWhitelist(
 }
 
 
-// ===============================
-// REMOVE ONE WHITELIST
-// ===============================
-
+// REMOVE ONE TYPE
 async function removeWhitelist(
   targetId,
   targetType,
@@ -98,10 +91,7 @@ async function removeWhitelist(
 }
 
 
-// ===============================
-// REMOVE ALL WHITELISTS
-// ===============================
-
+// REMOVE ALL TYPES
 async function removeAllWhitelist(
   targetId,
   targetType
@@ -123,10 +113,7 @@ async function removeAllWhitelist(
 }
 
 
-// ===============================
-// GET WHITELIST TYPES
-// ===============================
-
+// GET TYPES FOR ONE TARGET
 async function getWhitelists(
   targetId,
   targetType
@@ -151,10 +138,7 @@ async function getWhitelists(
 }
 
 
-// ===============================
 // CHECK WHITELIST
-// ===============================
-
 async function hasWhitelist(
   targetId,
   targetType,
@@ -166,11 +150,12 @@ async function hasWhitelist(
       FROM whitelists
       WHERE target_id = $1
         AND target_type = $2
-        AND LOWER(TRIM(whitelist_type))
-            IN (
-              'all',
-              LOWER(TRIM($3))
-            )
+        AND (
+          LOWER(TRIM(whitelist_type)) = 'all'
+          OR
+          LOWER(TRIM(whitelist_type))
+            = LOWER(TRIM($3))
+        )
       LIMIT 1;
     `,
     [
@@ -184,10 +169,7 @@ async function hasWhitelist(
 }
 
 
-// ===============================
-// LIST WHITELISTS
-// ===============================
-
+// LIST
 async function listWhitelists(
   targetType
 ) {
