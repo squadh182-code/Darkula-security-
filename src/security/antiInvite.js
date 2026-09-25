@@ -1,40 +1,43 @@
 const config =
   require("../config/config");
 
-const {
-  timeoutMember
-} = require("../utils/timeout");
-
-const securityLog =
-  require("../utils/securityLog");
-
-const channelWhitelist =
-  require("../whitelist/channelWhitelist");
-
 const userWhitelist =
   require("../whitelist/userWhitelist");
 
 const roleWhitelist =
   require("../whitelist/roleWhitelist");
 
-const inviteRegex =
-  /(discord\.gg\/|discord\.com\/invite\/|discordapp\.com\/invite\/)/i;
+const channelWhitelist =
+  require("../whitelist/channelWhitelist");
 
-const linkRegex =
-  /https?:\/\/[^\s]+/i;
+const {
+  timeoutMember
+} = require("../utils/timeout");
+
+const {
+  sendTimeoutNotification
+} = require("../utils/timeoutNotification");
+
+const securityLog =
+  require("../utils/securityLog");
+
+/* =========================
+   DETECTION
+========================= */
+
+const discordInviteRegex =
+  /(discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\/[^\s]+/i;
+
+const urlRegex =
+  /https?:\/\/[^\s]+|www\.[^\s]+/i;
+
+/* =========================
+   WHITELIST
+========================= */
 
 async function isWhitelisted(
   message
 ) {
-  if (
-    await channelWhitelist.has(
-      message.channel.id,
-      "Invite"
-    )
-  ) {
-    return true;
-  }
-
   if (
     await userWhitelist.has(
       message.author.id,
@@ -51,75 +54,83 @@ async function isWhitelisted(
         ]
       : [];
 
-  return roleWhitelist.has(
-    roleIds,
-    "Invite"
-  );
+  if (
+    roleIds.length &&
+    await roleWhitelist.has(
+      roleIds,
+      "Invite"
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    await channelWhitelist.has(
+      message.channel.id,
+      "Invite"
+    )
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
-async function handleMessage(
+/* =========================
+   PUNISH
+========================= */
+
+async function punish(
   message
 ) {
-  if (
-    !message.guild ||
-    message.author.bot
-  ) {
-    return;
+  if (!message.member) {
+    return false;
   }
 
   if (
-    await isWhitelisted(message)
+    message.author.id ===
+    message.client.user.id
   ) {
-    return;
+    return false;
   }
 
-  const content =
-    message.content || "";
+  await message.delete()
+    .catch(() => {});
 
-  const containsInvite =
-    inviteRegex.test(content);
+  const reason =
+    "Unauthorized invite/link.";
 
-  const containsLink =
-    linkRegex.test(content);
-
-  if (
-    !containsInvite &&
-    !containsLink
-  ) {
-    return;
-  }
-
-  try {
-    await message.delete();
-  } catch {}
-
-  const success =
+  const timedOut =
     await timeoutMember(
       message.member,
       config.timeoutDuration,
-      "Unauthorized invite/link"
+      reason
     );
 
-  if (success) {
-    await message.channel
-      .send({
-        content:
-          `⚠️ ${message.author} has been timed out for 5 minutes.\n` +
-          `Reason: Unauthorized invite/link.`
-      })
-      .catch(() => {});
+  if (!timedOut) {
+    return false;
   }
+
+  await sendTimeoutNotification(
+    message,
+    reason,
+    "5 minutes"
+  );
 
   await securityLog(
     message.guild,
     {
       title: "User Timed Out",
-      color: 0xFFA500,
+      description:
+        `${message.author} was automatically timed out.`,
+      color: 0xED4245,
+
       fields: [
         {
           name: "User",
           value:
-            `${message.author} (${message.author.id})`
+            `${message.author}\n\`${message.author.id}\``,
+          inline: true
         },
         {
           name: "Duration",
@@ -128,13 +139,60 @@ async function handleMessage(
         },
         {
           name: "Reason",
-          value:
-            "Unauthorized invite/link",
+          value: reason
+        },
+        {
+          name: "Channel",
+          value: `${message.channel}`,
           inline: true
         }
       ]
     }
   );
+
+  return true;
+}
+
+/* =========================
+   MAIN
+========================= */
+
+async function handleMessage(
+  message
+) {
+  if (!message.guild) {
+    return false;
+  }
+
+  if (message.author.bot) {
+    return false;
+  }
+
+  if (!message.content) {
+    return false;
+  }
+
+  const hasInvite =
+    discordInviteRegex.test(
+      message.content
+    );
+
+  const hasLink =
+    urlRegex.test(
+      message.content
+    );
+
+  if (!hasInvite && !hasLink) {
+    return false;
+  }
+
+  if (
+    await isWhitelisted(message)
+  ) {
+    return false;
+  }
+
+  return punish(message);
 }
 
 module.exports = {
