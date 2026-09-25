@@ -1,5 +1,18 @@
+const {
+  EmbedBuilder
+} = require("discord.js");
+
 const config =
   require("../config/config");
+
+const userWhitelist =
+  require("../whitelist/userWhitelist");
+
+const roleWhitelist =
+  require("../whitelist/roleWhitelist");
+
+const channelWhitelist =
+  require("../whitelist/channelWhitelist");
 
 const {
   timeoutMember
@@ -8,31 +21,161 @@ const {
 const securityLog =
   require("../utils/securityLog");
 
-const channelWhitelist =
-  require("../whitelist/channelWhitelist");
 
-const userWhitelist =
-  require("../whitelist/userWhitelist");
-
-const roleWhitelist =
-  require("../whitelist/roleWhitelist");
+// ==========================================
+// MESSAGE HISTORY
+// ==========================================
 
 const messageHistory =
   new Map();
+
+
+// ==========================================
+// NORMALIZE MESSAGE
+// ==========================================
+
+function normalizeMessage(content) {
+  return content
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+// ==========================================
+// SIMILARITY
+// ==========================================
+
+function similarity(a, b) {
+  if (!a || !b) return 0;
+
+  if (a === b) {
+    return 1;
+  }
+
+  const longer =
+    a.length >= b.length ? a : b;
+
+  const shorter =
+    a.length >= b.length ? b : a;
+
+  if (!longer.length) {
+    return 1;
+  }
+
+  let distance =
+    levenshteinDistance(
+      longer,
+      shorter
+    );
+
+  return (
+    (longer.length - distance) /
+    longer.length
+  );
+}
+
+
+// ==========================================
+// LEVENSHTEIN
+// ==========================================
+
+function levenshteinDistance(
+  a,
+  b
+) {
+  const matrix =
+    Array.from(
+      { length: b.length + 1 },
+      () =>
+        Array(a.length + 1).fill(0)
+    );
+
+
+  for (
+    let i = 0;
+    i <= b.length;
+    i++
+  ) {
+    matrix[i][0] = i;
+  }
+
+
+  for (
+    let j = 0;
+    j <= a.length;
+    j++
+  ) {
+    matrix[0][j] = j;
+  }
+
+
+  for (
+    let i = 1;
+    i <= b.length;
+    i++
+  ) {
+
+    for (
+      let j = 1;
+      j <= a.length;
+      j++
+    ) {
+
+      if (
+        b[i - 1] ===
+        a[j - 1]
+      ) {
+
+        matrix[i][j] =
+          matrix[i - 1][j - 1];
+
+      } else {
+
+        matrix[i][j] =
+          Math.min(
+            matrix[i - 1][j] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j - 1] + 1
+          );
+      }
+    }
+  }
+
+
+  return matrix[b.length][a.length];
+}
+
+
+// ==========================================
+// GET USER ROLES
+// ==========================================
+
+function getRoleIds(member) {
+  if (!member?.roles?.cache) {
+    return [];
+  }
+
+  return [
+    ...member.roles.cache.keys()
+  ];
+}
+
+
+// ==========================================
+// WHITELIST CHECK
+// ==========================================
 
 async function isWhitelisted(
   message,
   type
 ) {
-  if (
-    await channelWhitelist.has(
-      message.channel.id,
-      type
-    )
-  ) {
-    return true;
-  }
+  const member =
+    message.member;
 
+  // User whitelist
   if (
     await userWhitelist.has(
       message.author.id,
@@ -42,176 +185,135 @@ async function isWhitelisted(
     return true;
   }
 
+
+  // Role whitelist
   const roleIds =
-    message.member?.roles?.cache
-      ? [
-          ...message.member.roles.cache.keys()
-        ]
-      : [];
+    getRoleIds(member);
 
-  return roleWhitelist.has(
-    roleIds,
-    type
-  );
-}
-
-function normalize(text) {
-  return text
-    .toLowerCase()
-    .replace(
-      /<a?:\w+:\d+>/g,
-      ""
+  if (
+    roleIds.length &&
+    await roleWhitelist.has(
+      roleIds,
+      type
     )
-    .replace(/\s+/g, " ")
-    .trim();
+  ) {
+    return true;
+  }
+
+
+  // Channel whitelist
+  if (
+    await channelWhitelist.has(
+      message.channel.id,
+      type
+    )
+  ) {
+    return true;
+  }
+
+
+  return false;
 }
 
-function levenshtein(a, b) {
-  if (a === b) {
-    return 0;
-  }
 
-  if (!a.length) {
-    return b.length;
-  }
+// ==========================================
+// SEND TIMEOUT EMBED
+// ==========================================
 
-  if (!b.length) {
-    return a.length;
-  }
+async function sendTimeoutEmbed(
+  message,
+  reason
+) {
+  const embed =
+    new EmbedBuilder()
+      .setColor(0xED4245)
+      .setTitle("⚠️ Member Timed Out")
+      .setDescription(
+        `${message.author} has been timed out for **5 minutes**.`
+      )
+      .addFields(
+        {
+          name: "Reason",
+          value: reason
+        }
+      )
+      .setTimestamp();
 
-  const matrix =
-    Array.from(
-      {
-        length: a.length + 1
-      },
-      () =>
-        new Array(
-          b.length + 1
-        ).fill(0)
+
+  try {
+    await message.channel.send({
+      embeds: [embed]
+    });
+  } catch (error) {
+    console.error(
+      "❌ Failed to send timeout embed:",
+      error
     );
-
-  for (
-    let i = 0;
-    i <= a.length;
-    i++
-  ) {
-    matrix[i][0] = i;
   }
-
-  for (
-    let j = 0;
-    j <= b.length;
-    j++
-  ) {
-    matrix[0][j] = j;
-  }
-
-  for (
-    let i = 1;
-    i <= a.length;
-    i++
-  ) {
-    for (
-      let j = 1;
-      j <= b.length;
-      j++
-    ) {
-      const cost =
-        a[i - 1] === b[j - 1]
-          ? 0
-          : 1;
-
-      matrix[i][j] =
-        Math.min(
-          matrix[i - 1][j] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] +
-            cost
-        );
-    }
-  }
-
-  return matrix[a.length][b.length];
 }
 
-function similarity(a, b) {
-  if (!a || !b) {
-    return 0;
-  }
 
-  if (a === b) {
-    return 1;
-  }
-
-  const maxLength =
-    Math.max(
-      a.length,
-      b.length
-    );
-
-  if (!maxLength) {
-    return 1;
-  }
-
-  return (
-    1 -
-    levenshtein(a, b) /
-      maxLength
-  );
-}
-
-function countEmojis(text) {
-  const custom =
-    text.match(
-      /<a?:\w+:\d+>/g
-    ) || [];
-
-  const unicode =
-    text.match(
-      /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu
-    ) || [];
-
-  return (
-    custom.length +
-    unicode.length
-  );
-}
+// ==========================================
+// PUNISH
+// ==========================================
 
 async function punish(
   message,
   reason
 ) {
-  try {
-    await message.delete();
-  } catch {}
+  if (!message.member) {
+    return false;
+  }
 
-  const success =
+
+  if (
+    message.author.id ===
+    message.client.user.id
+  ) {
+    return false;
+  }
+
+
+  const deleted =
+    await message.delete()
+      .then(() => true)
+      .catch(() => false);
+
+
+  const timedOut =
     await timeoutMember(
       message.member,
       config.timeoutDuration,
       reason
     );
 
-  if (success) {
-    await message.channel
-      .send({
-        content:
-          `⚠️ ${message.author} has been timed out for 5 minutes.\n` +
-          `Reason: ${reason}.`
-      })
-      .catch(() => {});
+
+  if (!timedOut) {
+    return false;
   }
 
+
+  // Channel notification
+  await sendTimeoutEmbed(
+    message,
+    reason
+  );
+
+
+  // Security log
   await securityLog(
     message.guild,
     {
       title: "User Timed Out",
-      color: 0xFFA500,
+      description:
+        `${message.author} was automatically timed out.`,
+      color: 0xED4245,
       fields: [
         {
           name: "User",
           value:
-            `${message.author} (${message.author.id})`
+            `${message.author}\n\`${message.author.id}\``,
+          inline: true
         },
         {
           name: "Duration",
@@ -220,195 +322,253 @@ async function punish(
         },
         {
           name: "Reason",
-          value: reason,
+          value: reason
+        },
+        {
+          name: "Channel",
+          value: `${message.channel}`,
           inline: true
         }
       ]
     }
   );
+
+
+  return true;
 }
+
+
+// ==========================================
+// MENTION COUNT
+// ==========================================
+
+function countMentions(message) {
+  let count = 0;
+
+  count +=
+    message.mentions.users.size;
+
+  count +=
+    message.mentions.roles.size;
+
+  if (message.mentions.everyone) {
+    count += 1;
+  }
+
+  return count;
+}
+
+
+// ==========================================
+// EMOJI COUNT
+// ==========================================
+
+function countEmojis(content) {
+
+  const customEmojis =
+    content.match(
+      /<a?:\w+:\d+>/g
+    ) || [];
+
+  const unicodeEmojis =
+    content.match(
+      /\p{Extended_Pictographic}/gu
+    ) || [];
+
+  return (
+    customEmojis.length +
+    unicodeEmojis.length
+  );
+}
+
+
+// ==========================================
+// HANDLE MESSAGE
+// ==========================================
 
 async function handleMessage(
   message
 ) {
-  if (
-    !message.guild ||
-    message.author.bot
-  ) {
-    return;
+  if (!message.guild) {
+    return false;
   }
 
-  /*
-   * =========================
-   * LONG MESSAGE
-   * =========================
-   */
+
+  if (message.author.bot) {
+    return false;
+  }
+
+
+  if (!message.member) {
+    return false;
+  }
+
+
+  // ========================================
+  // LONG MESSAGE
+  // ========================================
 
   if (
     message.content.length >
-      config.maxMessageLength &&
-    !(await isWhitelisted(
-      message,
-      "Long Message"
-    ))
+    config.maxMessageLength
   ) {
-    await punish(
-      message,
-      `Long Message — exceeded ${config.maxMessageLength} characters`
-    );
 
-    return;
+    if (
+      !(await isWhitelisted(
+        message,
+        "Long Message"
+      ))
+    ) {
+
+      return punish(
+        message,
+        `Long Message — exceeded the maximum limit of ${config.maxMessageLength} characters.`
+      );
+    }
   }
 
-  /*
-   * =========================
-   * MENTION SPAM
-   * =========================
-   */
+
+  // ========================================
+  // MENTION SPAM
+  // ========================================
 
   const mentionCount =
-    message.mentions.users.size +
-    message.mentions.roles.size +
-    message.mentions.channels.size +
-    (message.mentions.everyone
-      ? 1
-      : 0);
+    countMentions(message);
+
 
   if (
     mentionCount >
-      config.mentionLimit &&
-    !(await isWhitelisted(
-      message,
-      "Mention"
-    ))
+    config.mentionLimit
   ) {
-    await punish(
-      message,
-      `Mention Spam — ${mentionCount} mentions`
-    );
 
-    return;
+    if (
+      !(await isWhitelisted(
+        message,
+        "Mention"
+      ))
+    ) {
+
+      return punish(
+        message,
+        `Mention Spam — sent ${mentionCount} mentions.`
+      );
+    }
   }
 
-  /*
-   * =========================
-   * EMOJI SPAM
-   * =========================
-   */
+
+  // ========================================
+  // EMOJI SPAM
+  // ========================================
 
   const emojiCount =
     countEmojis(
       message.content
     );
 
+
   if (
     emojiCount >
-      config.emojiLimit &&
-    !(await isWhitelisted(
-      message,
-      "Emoji"
-    ))
+    config.emojiLimit
   ) {
-    await punish(
-      message,
-      `Emoji Spam — ${emojiCount} emojis`
-    );
 
-    return;
+    if (
+      !(await isWhitelisted(
+        message,
+        "Emoji"
+      ))
+    ) {
+
+      return punish(
+        message,
+        `Emoji Spam — sent ${emojiCount} emojis.`
+      );
+    }
   }
 
-  /*
-   * =========================
-   * SIMILAR MESSAGE SPAM
-   * =========================
-   */
 
-  if (
-    await isWhitelisted(
-      message,
-      "Spam"
-    )
-  ) {
-    return;
-  }
+  // ========================================
+  // SIMILAR MESSAGE SPAM
+  // ========================================
 
-  const key =
-    `${message.guild.id}:` +
-    `${message.channel.id}:` +
-    `${message.author.id}`;
-
-  const content =
-    normalize(
+  const normalized =
+    normalizeMessage(
       message.content
     );
 
-  if (!content) {
-    return;
+
+  if (!normalized) {
+    return false;
   }
 
-  if (
-    !messageHistory.has(key)
-  ) {
+
+  const key =
+    `${message.guild.id}:${message.author.id}`;
+
+
+  if (!messageHistory.has(key)) {
     messageHistory.set(
       key,
       []
     );
   }
 
-  const now =
-    Date.now();
 
-  const recent =
-    messageHistory
-      .get(key)
-      .filter(
-        item =>
-          now - item.time <
-          30000
-      );
+  const history =
+    messageHistory.get(key);
 
-  recent.push({
-    content,
-    time: now
-  });
 
-  const similarCount =
-    recent.filter(
-      item =>
-        similarity(
-          item.content,
-          content
-        ) >=
-        config.similarityThreshold
-    ).length;
+  let similarCount = 1;
 
-  messageHistory.set(
-    key,
-    recent.slice(-10)
-  );
 
-  /*
-   * 1st, 2nd, 3rd = allowed
-   * 4th = punishment
-   */
+  for (
+    const previous of history
+  ) {
+
+    if (
+      similarity(
+        normalized,
+        previous
+      ) >=
+      config.similarityThreshold
+    ) {
+      similarCount++;
+    }
+  }
+
+
+  history.push(normalized);
+
+
+  // Keep recent messages only
+  if (history.length > 10) {
+    history.shift();
+  }
+
 
   if (
     similarCount >=
     config.spamLimit
   ) {
-    await punish(
-      message,
-      "Spam — sent the same/similar message 4 times"
-    );
 
-    messageHistory.delete(
-      key
-    );
+    if (
+      !(await isWhitelisted(
+        message,
+        "Spam"
+      ))
+    ) {
+
+      return punish(
+        message,
+        `Spam — sent the same/similar message ${similarCount} times.`
+      );
+    }
   }
+
+
+  return false;
 }
 
+
 module.exports = {
-  handleMessage,
-  countEmojis,
-  similarity
+  handleMessage
 };
