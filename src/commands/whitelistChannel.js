@@ -1,10 +1,10 @@
 const {
-  SlashCommandBuilder,
-  ChannelType
+  SlashCommandBuilder
 } = require("discord.js");
 
 const channelWhitelist =
   require("../whitelist/channelWhitelist");
+
 
 const TYPES = [
   "All",
@@ -15,32 +15,38 @@ const TYPES = [
   "Long Message"
 ];
 
+
 module.exports = {
+
   data: new SlashCommandBuilder()
     .setName("whitelist-channel")
-    .setDescription("Manage channel whitelist")
+    .setDescription(
+      "Manage channel whitelist"
+    )
 
+    // ADD
     .addSubcommand(sub =>
       sub
         .setName("add")
-        .setDescription("Add a channel to the whitelist")
+        .setDescription(
+          "Add a channel to the whitelist"
+        )
 
         .addChannelOption(option =>
           option
             .setName("channel")
-            .setDescription("Channel to whitelist")
-            .setRequired(true)
-            .addChannelTypes(
-              ChannelType.GuildText,
-              ChannelType.GuildAnnouncement,
-              ChannelType.GuildForum
+            .setDescription(
+              "Channel to whitelist"
             )
+            .setRequired(true)
         )
 
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Protection type")
+            .setDescription(
+              "Protection type"
+            )
             .setRequired(true)
             .addChoices(
               ...TYPES.map(type => ({
@@ -51,27 +57,29 @@ module.exports = {
         )
     )
 
+    // REMOVE
     .addSubcommand(sub =>
       sub
         .setName("remove")
-        .setDescription("Remove a channel from the whitelist")
+        .setDescription(
+          "Remove a channel from the whitelist"
+        )
 
         .addChannelOption(option =>
           option
             .setName("channel")
-            .setDescription("Channel to remove")
-            .setRequired(true)
-            .addChannelTypes(
-              ChannelType.GuildText,
-              ChannelType.GuildAnnouncement,
-              ChannelType.GuildForum
+            .setDescription(
+              "Channel to remove"
             )
+            .setRequired(true)
         )
 
         .addStringOption(option =>
           option
             .setName("type")
-            .setDescription("Whitelist type to remove")
+            .setDescription(
+              "Whitelist type to remove"
+            )
             .setRequired(true)
             .addChoices(
               ...TYPES.map(type => ({
@@ -82,22 +90,34 @@ module.exports = {
         )
     )
 
+    // LIST
     .addSubcommand(sub =>
       sub
         .setName("list")
-        .setDescription("List whitelisted channels")
+        .setDescription(
+          "List whitelisted channels"
+        )
     ),
 
+
   async execute(interaction) {
+
     const subcommand =
       interaction.options.getSubcommand();
 
+
+    // ADD
     if (subcommand === "add") {
+
       const channel =
-        interaction.options.getChannel("channel");
+        interaction.options.getChannel(
+          "channel"
+        );
 
       const type =
-        interaction.options.getString("type");
+        interaction.options.getString(
+          "type"
+        );
 
       await channelWhitelist.add(
         channel.id,
@@ -109,12 +129,19 @@ module.exports = {
       );
     }
 
+
+    // REMOVE
     if (subcommand === "remove") {
+
       const channel =
-        interaction.options.getChannel("channel");
+        interaction.options.getChannel(
+          "channel"
+        );
 
       const type =
-        interaction.options.getString("type");
+        interaction.options.getString(
+          "type"
+        );
 
       const removed =
         await channelWhitelist.remove(
@@ -133,7 +160,10 @@ module.exports = {
       );
     }
 
+
+    // LIST
     if (subcommand === "list") {
+
       const rows =
         await channelWhitelist.list();
 
@@ -147,7 +177,10 @@ module.exports = {
         new Map();
 
       for (const row of rows) {
-        if (!grouped.has(row.target_id)) {
+
+        if (!grouped.has(
+          row.target_id
+        )) {
           grouped.set(
             row.target_id,
             []
