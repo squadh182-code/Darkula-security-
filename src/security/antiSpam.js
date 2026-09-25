@@ -1,7 +1,3 @@
-const {
-  EmbedBuilder
-} = require("discord.js");
-
 const config =
   require("../config/config");
 
@@ -18,6 +14,10 @@ const {
   timeoutMember
 } = require("../utils/timeout");
 
+const {
+  sendTimeoutNotification
+} = require("../utils/timeoutNotification");
+
 const securityLog =
   require("../utils/securityLog");
 
@@ -25,7 +25,7 @@ const messageHistory =
   new Map();
 
 /* =========================
-   MESSAGE NORMALIZATION
+   NORMALIZE
 ========================= */
 
 function normalizeMessage(content) {
@@ -42,7 +42,9 @@ function normalizeMessage(content) {
 ========================= */
 
 function similarity(a, b) {
-  if (!a || !b) return 0;
+  if (!a || !b) {
+    return 0;
+  }
 
   if (a === b) {
     return 1;
@@ -53,10 +55,6 @@ function similarity(a, b) {
 
   const shorter =
     a.length >= b.length ? b : a;
-
-  if (!longer.length) {
-    return 1;
-  }
 
   const distance =
     levenshteinDistance(
@@ -129,7 +127,7 @@ function levenshteinDistance(a, b) {
 }
 
 /* =========================
-   ROLE IDS
+   ROLES
 ========================= */
 
 function getRoleIds(member) {
@@ -143,16 +141,13 @@ function getRoleIds(member) {
 }
 
 /* =========================
-   WHITELIST CHECK
+   WHITELIST
 ========================= */
 
 async function isWhitelisted(
   message,
   type
 ) {
-  const member =
-    message.member;
-
   if (
     await userWhitelist.has(
       message.author.id,
@@ -163,7 +158,7 @@ async function isWhitelisted(
   }
 
   const roleIds =
-    getRoleIds(member);
+    getRoleIds(message.member);
 
   if (
     roleIds.length &&
@@ -188,54 +183,7 @@ async function isWhitelisted(
 }
 
 /* =========================
-   TIMEOUT EMBED
-========================= */
-
-async function sendTimeoutEmbed(
-  message,
-  reason
-) {
-  const embed =
-    new EmbedBuilder()
-      .setColor(0xED4245)
-      .setTitle(
-        "⚠️ Member Timed Out"
-      )
-      .setDescription(
-        `${message.author} has been timed out for **5 minutes**.`
-      )
-      .addFields(
-        {
-          name: "Reason",
-          value: reason
-        },
-        {
-          name: "Channel",
-          value: `${message.channel}`,
-          inline: true
-        }
-      )
-      .setThumbnail(
-        message.author.displayAvatarURL({
-          dynamic: true
-        })
-      )
-      .setTimestamp();
-
-  try {
-    await message.channel.send({
-      embeds: [embed]
-    });
-  } catch (error) {
-    console.error(
-      "❌ Failed to send timeout embed:",
-      error
-    );
-  }
-}
-
-/* =========================
-   PUNISHMENT
+   PUNISH
 ========================= */
 
 async function punish(
@@ -267,19 +215,18 @@ async function punish(
     return false;
   }
 
-  await sendTimeoutEmbed(
+  await sendTimeoutNotification(
     message,
-    reason
+    reason,
+    "5 minutes"
   );
 
   await securityLog(
     message.guild,
     {
       title: "User Timed Out",
-
       description:
         `${message.author} was automatically timed out.`,
-
       color: 0xED4245,
 
       fields: [
@@ -311,7 +258,7 @@ async function punish(
 }
 
 /* =========================
-   MENTION COUNT
+   MENTIONS
 ========================= */
 
 function countMentions(message) {
@@ -331,7 +278,7 @@ function countMentions(message) {
 }
 
 /* =========================
-   EMOJI COUNT
+   EMOJIS
 ========================= */
 
 function countEmojis(content) {
@@ -352,7 +299,7 @@ function countEmojis(content) {
 }
 
 /* =========================
-   MAIN HANDLER
+   MAIN
 ========================= */
 
 async function handleMessage(
@@ -370,22 +317,18 @@ async function handleMessage(
     return false;
   }
 
-  /* =========================
-     LONG MESSAGE
-     301+ CHARACTERS
-  ========================= */
+  /* LONG MESSAGE */
 
   if (
     message.content.length >
     config.maxMessageLength
   ) {
-    const whitelisted =
-      await isWhitelisted(
+    if (
+      !(await isWhitelisted(
         message,
         "Long Message"
-      );
-
-    if (!whitelisted) {
+      ))
+    ) {
       return punish(
         message,
         `Long Message — exceeded the maximum limit of ${config.maxMessageLength} characters.`
@@ -395,9 +338,7 @@ async function handleMessage(
     return false;
   }
 
-  /* =========================
-     MENTION SPAM
-  ========================= */
+  /* MENTION SPAM */
 
   const mentionCount =
     countMentions(message);
@@ -406,13 +347,12 @@ async function handleMessage(
     mentionCount >
     config.mentionLimit
   ) {
-    const whitelisted =
-      await isWhitelisted(
+    if (
+      !(await isWhitelisted(
         message,
         "Mention"
-      );
-
-    if (!whitelisted) {
+      ))
+    ) {
       return punish(
         message,
         `Mention Spam — sent ${mentionCount} mentions.`
@@ -422,9 +362,7 @@ async function handleMessage(
     return false;
   }
 
-  /* =========================
-     EMOJI SPAM
-  ========================= */
+  /* EMOJI SPAM */
 
   const emojiCount =
     countEmojis(
@@ -435,13 +373,12 @@ async function handleMessage(
     emojiCount >
     config.emojiLimit
   ) {
-    const whitelisted =
-      await isWhitelisted(
+    if (
+      !(await isWhitelisted(
         message,
         "Emoji"
-      );
-
-    if (!whitelisted) {
+      ))
+    ) {
       return punish(
         message,
         `Emoji Spam — sent ${emojiCount} emojis.`
@@ -451,9 +388,7 @@ async function handleMessage(
     return false;
   }
 
-  /* =========================
-     SIMILAR MESSAGE SPAM
-  ========================= */
+  /* SIMILAR MESSAGE */
 
   const normalized =
     normalizeMessage(
@@ -499,28 +434,21 @@ async function handleMessage(
     history.shift();
   }
 
-  /* =========================
-     4TH SIMILAR MESSAGE
-  ========================= */
-
   if (
     similarCount >=
     config.spamLimit
   ) {
-    const whitelisted =
-      await isWhitelisted(
+    if (
+      !(await isWhitelisted(
         message,
         "Spam"
-      );
-
-    if (!whitelisted) {
+      ))
+    ) {
       return punish(
         message,
         `Spam — sent the same/similar message ${similarCount} times.`
       );
     }
-
-    return false;
   }
 
   return false;
