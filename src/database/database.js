@@ -32,6 +32,11 @@ async function initDatabase() {
   console.log("✅ PostgreSQL database ready.");
 }
 
+
+// ===============================
+// ADD WHITELIST
+// ===============================
+
 async function addWhitelist(
   targetId,
   targetType,
@@ -40,20 +45,33 @@ async function addWhitelist(
   await pool.query(
     `
       INSERT INTO whitelists
-        (target_id, target_type, whitelist_type)
+        (
+          target_id,
+          target_type,
+          whitelist_type
+        )
       VALUES
         ($1, $2, $3)
       ON CONFLICT
-        (target_id, target_type, whitelist_type)
+        (
+          target_id,
+          target_type,
+          whitelist_type
+        )
       DO NOTHING;
     `,
     [
-      targetId,
-      targetType,
-      whitelistType
+      String(targetId),
+      String(targetType),
+      String(whitelistType).trim()
     ]
   );
 }
+
+
+// ===============================
+// REMOVE ONE WHITELIST
+// ===============================
 
 async function removeWhitelist(
   targetId,
@@ -65,18 +83,24 @@ async function removeWhitelist(
       DELETE FROM whitelists
       WHERE target_id = $1
         AND target_type = $2
-        AND whitelist_type = $3
+        AND LOWER(TRIM(whitelist_type))
+            = LOWER(TRIM($3))
       RETURNING *;
     `,
     [
-      targetId,
-      targetType,
-      whitelistType
+      String(targetId),
+      String(targetType),
+      String(whitelistType)
     ]
   );
 
-  return result.rowCount > 0;
+  return result.rows[0] || null;
 }
+
+
+// ===============================
+// REMOVE ALL WHITELISTS
+// ===============================
 
 async function removeAllWhitelist(
   targetId,
@@ -90,13 +114,18 @@ async function removeAllWhitelist(
       RETURNING *;
     `,
     [
-      targetId,
-      targetType
+      String(targetId),
+      String(targetType)
     ]
   );
 
-  return result.rowCount > 0;
+  return result.rowCount;
 }
+
+
+// ===============================
+// GET WHITELIST TYPES
+// ===============================
 
 async function getWhitelists(
   targetId,
@@ -111,8 +140,8 @@ async function getWhitelists(
       ORDER BY whitelist_type;
     `,
     [
-      targetId,
-      targetType
+      String(targetId),
+      String(targetType)
     ]
   );
 
@@ -120,6 +149,11 @@ async function getWhitelists(
     row => row.whitelist_type
   );
 }
+
+
+// ===============================
+// CHECK WHITELIST
+// ===============================
 
 async function hasWhitelist(
   targetId,
@@ -132,18 +166,27 @@ async function hasWhitelist(
       FROM whitelists
       WHERE target_id = $1
         AND target_type = $2
-        AND whitelist_type IN ('All', $3)
+        AND LOWER(TRIM(whitelist_type))
+            IN (
+              'all',
+              LOWER(TRIM($3))
+            )
       LIMIT 1;
     `,
     [
-      targetId,
-      targetType,
-      whitelistType
+      String(targetId),
+      String(targetType),
+      String(whitelistType)
     ]
   );
 
   return result.rowCount > 0;
 }
+
+
+// ===============================
+// LIST WHITELISTS
+// ===============================
 
 async function listWhitelists(
   targetType
@@ -158,11 +201,14 @@ async function listWhitelists(
       WHERE target_type = $1
       ORDER BY target_id, whitelist_type;
     `,
-    [targetType]
+    [
+      String(targetType)
+    ]
   );
 
   return result.rows;
 }
+
 
 module.exports = {
   pool,
