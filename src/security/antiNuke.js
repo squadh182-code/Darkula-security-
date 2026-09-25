@@ -23,19 +23,23 @@ async function clearUserRoles(
   }
 
   if (
-    member.id === botMember.id
+    member.id ===
+    botMember.id
   ) {
     return false;
   }
 
-  if (!member.manageable) {
+  if (
+    !member.manageable
+  ) {
     return false;
   }
 
   const removableRoles =
     member.roles.cache.filter(
       role =>
-        role.id !== member.guild.id &&
+        role.id !==
+          member.guild.id &&
         !role.managed &&
         role.editable &&
         botMember.roles.highest.comparePositionTo(
@@ -43,7 +47,9 @@ async function clearUserRoles(
         ) > 0
     );
 
-  if (!removableRoles.size) {
+  if (
+    !removableRoles.size
+  ) {
     return false;
   }
 
@@ -54,6 +60,7 @@ async function clearUserRoles(
     );
 
     return true;
+
   } catch (error) {
     console.error(
       "❌ Anti-Nuke role clear failed:",
@@ -64,7 +71,7 @@ async function clearUserRoles(
   }
 }
 
-function isWhitelisted(
+async function isWhitelisted(
   executor,
   type,
   member
@@ -75,7 +82,7 @@ function isWhitelisted(
 
   if (
     type &&
-    userWhitelist.has(
+    await userWhitelist.has(
       executor.id,
       type
     )
@@ -118,49 +125,46 @@ async function handleAction({
     return false;
   }
 
-  /*
-   * Whitelist
-   */
-
   if (
     whitelistType &&
-    isWhitelisted(
+    await isWhitelisted(
       executor,
       whitelistType,
       responsibleMember
     )
   ) {
-    await securityLog(guild, {
-      title:
-        "Whitelisted Security Action",
-      color: 0x57F287,
-      fields: [
-        {
-          name: "Action",
-          value: action || "Unknown"
-        },
-        {
-          name: "User",
-          value: `${executor}`
-        },
-        {
-          name: "Reason",
-          value:
-            reason ||
-            "Whitelisted action"
-        }
-      ]
-    });
+    await securityLog(
+      guild,
+      {
+        title:
+          "Whitelisted Security Action",
+        color: 0x57F287,
+        fields: [
+          {
+            name: "Action",
+            value:
+              action || "Unknown"
+          },
+          {
+            name: "User",
+            value:
+              `${executor}`
+          },
+          {
+            name: "Reason",
+            value:
+              reason ||
+              "Whitelisted action"
+          }
+        ]
+      }
+    );
 
     return true;
   }
 
-  /*
-   * Permission changes are treated
-   * as dangerous Anti-Nuke actions.
-   */
-
-  let rolesCleared = false;
+  let rolesCleared =
+    false;
 
   if (
     action ===
@@ -174,38 +178,43 @@ async function handleAction({
       );
   }
 
-  await securityLog(guild, {
-    title:
-      rolesCleared
-        ? "Roles Cleared"
-        : "Anti-Nuke Detection",
-    color: 0xFF0000,
-    fields: [
-      {
-        name: "Action",
-        value:
-          action || "Unknown"
-      },
-      {
-        name: "User",
-        value:
-          `${executor}`
-      },
-      {
-        name: "Reason",
-        value:
-          reason ||
-          "Unauthorized security action"
-      },
-      {
-        name: "Protection",
-        value:
-          rolesCleared
-            ? "Roles Cleared"
-            : "Logged"
-      }
-    ]
-  });
+  await securityLog(
+    guild,
+    {
+      title:
+        rolesCleared
+          ? "Roles Cleared"
+          : "Anti-Nuke Detection",
+
+      color: 0xFF0000,
+
+      fields: [
+        {
+          name: "Action",
+          value:
+            action || "Unknown"
+        },
+        {
+          name: "User",
+          value:
+            `${executor}`
+        },
+        {
+          name: "Reason",
+          value:
+            reason ||
+            "Unauthorized security action"
+        },
+        {
+          name: "Protection",
+          value:
+            rolesCleared
+              ? "Roles Cleared"
+              : "Logged"
+        }
+      ]
+    }
+  );
 
   return false;
 }
