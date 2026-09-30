@@ -15,10 +15,14 @@ const securityLog =
   require("../utils/securityLog");
 
 async function getMember(guild, userId) {
-  if (!userId) return null;
+  if (!userId) {
+    return null;
+  }
 
   try {
-    return await guild.members.fetch(userId);
+    return await guild.members.fetch(
+      userId
+    );
   } catch {
     return null;
   }
@@ -36,12 +40,16 @@ module.exports = async (
   auditLogEntry,
   guild
 ) => {
-  if (!guild) return;
+  if (!guild) {
+    return;
+  }
 
   const executor =
     auditLogEntry.executor;
 
-  if (!executor) return;
+  if (!executor) {
+    return;
+  }
 
   if (
     executor.id ===
@@ -70,7 +78,8 @@ module.exports = async (
       executor,
       responsibleMember,
       whitelistType: "Role Delete",
-      reason: "Role deletion detected"
+      reason:
+        "Role deletion detected"
     });
 
     await roleProtection.handleRoleAction({
@@ -98,7 +107,8 @@ module.exports = async (
       executor,
       responsibleMember,
       whitelistType: "Role Create",
-      reason: "Role creation detected"
+      reason:
+        "Role creation detected"
     });
 
     await roleProtection.handleRoleAction({
@@ -126,7 +136,8 @@ module.exports = async (
       executor,
       responsibleMember,
       whitelistType: "Role Update",
-      reason: "Role update detected"
+      reason:
+        "Role update detected"
     });
 
     await roleProtection.handleRoleAction({
@@ -154,7 +165,8 @@ module.exports = async (
       executor,
       responsibleMember,
       whitelistType: "Channel Delete",
-      reason: "Channel deletion detected"
+      reason:
+        "Channel deletion detected"
     });
 
     await channelProtection.handleChannelAction({
@@ -182,12 +194,42 @@ module.exports = async (
       executor,
       responsibleMember,
       whitelistType: "Channel Create",
-      reason: "Channel creation detected"
+      reason:
+        "Channel creation detected"
     });
 
     await channelProtection.handleChannelAction({
       guild,
       action: "Create",
+      channel: auditLogEntry.target,
+      executor,
+      responsibleMember
+    });
+
+    return;
+  }
+
+  /*
+   * CHANNEL UPDATE
+   */
+
+  if (
+    auditLogEntry.action ===
+    AuditLogEvent.ChannelUpdate
+  ) {
+    await antiNuke.handleAction({
+      guild,
+      action: "Channel Update",
+      executor,
+      responsibleMember,
+      whitelistType: "Channel Update",
+      reason:
+        "Channel update detected"
+    });
+
+    await channelProtection.handleChannelAction({
+      guild,
+      action: "Update",
       channel: auditLogEntry.target,
       executor,
       responsibleMember
@@ -210,7 +252,8 @@ module.exports = async (
   ) {
     await antiNuke.handleAction({
       guild,
-      action: "Channel Permission Change",
+      action:
+        "Channel Permission Change",
       executor,
       responsibleMember,
       reason:
@@ -247,7 +290,8 @@ module.exports = async (
         },
         {
           name: "Type",
-          value: "External Discord Action"
+          value:
+            "External Discord Action"
         }
       ]
     });
@@ -282,7 +326,8 @@ module.exports = async (
         },
         {
           name: "Type",
-          value: "External Discord Action"
+          value:
+            "External Discord Action"
         }
       ]
     });
@@ -339,10 +384,13 @@ module.exports = async (
         },
         {
           name: "Type",
-          value: "External Discord Action"
+          value:
+            "External Discord Action"
         }
       ]
     });
+
+    return;
   }
 
   /*
