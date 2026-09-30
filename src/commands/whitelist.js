@@ -11,6 +11,7 @@ const TYPES = [
   "All",
   "Channel Delete",
   "Channel Create",
+  "Channel Update",
   "Role Delete",
   "Role Create",
   "Role Update",
