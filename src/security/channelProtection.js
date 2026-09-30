@@ -28,10 +28,17 @@ async function isWhitelisted(
         ]
       : [];
 
-  return roleWhitelist.has(
-    roleIds,
-    type
-  );
+  if (
+    roleIds.length &&
+    await roleWhitelist.has(
+      roleIds,
+      type
+    )
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 async function clearUserRoles(
@@ -119,10 +126,21 @@ async function handleChannelAction({
     return;
   }
 
-  const whitelistType =
-    action === "Delete"
-      ? "Channel Delete"
-      : "Channel Create";
+  let whitelistType;
+
+  if (action === "Delete") {
+    whitelistType =
+      "Channel Delete";
+  } else if (action === "Create") {
+    whitelistType =
+      "Channel Create";
+  } else if (action === "Update") {
+    whitelistType =
+      "Channel Update";
+  } else {
+    whitelistType =
+      `Channel ${action}`;
+  }
 
   if (
     await isWhitelisted(
